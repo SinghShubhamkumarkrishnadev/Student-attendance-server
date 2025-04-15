@@ -1,364 +1,243 @@
 ---
 
-# 📘 Student Attendance System – Postman Setup & API Testing Guide
-
-## 📁 Collection Setup
-
-1. **Create a new Postman collection** named `Student Attendance System`.
-2. **Create Environment Variables** in Postman:
-   - `baseUrl`: `http://localhost:5000/api`
-   - `hodToken`
-   - `professorToken`
-   - `hodId`
-   - `professorId`
-   - `classId`
-   - `studentId`
+### 📘 Student Attendance System – Postman API Testing Guide
 
 ---
 
-## 🔐 1. HOD Authentication
+#### 🔧 Postman Setup
 
-### 1.1 Register HOD
+1. **Create a new Postman Collection**  
+   Name it: `Student Attendance System`
 
-- **Method**: `POST`  
-- **URL**: `{{baseUrl}}/hods/register`  
+2. **Set Environment Variables** in Postman:
+
+| Variable        | Value                          |
+|----------------|----------------------------------|
+| `baseUrl`       | `http://localhost:5000/api`     |
+| `hodToken`      | *(To be set after login)*        |
+| `professorToken`| *(To be set after login)*        |
+| `hodId`         | *(To be set after registration)* |
+| `professorId`   | *(To be set after creation)*     |
+| `classId`       | *(To be set after creation)*     |
+| `studentId`     | *(To be set after creation)*     |
+
+---
+
+### 🧪 API Testing Flow
+
+---
+
+#### 1. HOD Authentication
+
+**1.1 Register HOD**
+
+- **POST** `{{baseUrl}}/hods/register`  
 - **Body (JSON)**:
-  ```json
-  {
-    "collegeName": "Test College",
-    "username": "testadmin",
-    "password": "password123",
-    "email": "your_real_email@example.com"
-  }
-  ```
-- **Expected**:
-  - `Status`: `201`
-  - Response contains `hodId` → Save to `hodId` variable
+```json
+{
+  "collegeName": "Test College",
+  "username": "testadmin",
+  "password": "password123",
+  "email": "your_real_email@example.com"
+}
+```
+- **Expected**: `201 Created`, contains `hodId` and `email`  
+- 🔧 Save `hodId` to environment.
 
 ---
 
-### 1.2 Verify OTP
+**1.2 Verify OTP**
 
-- **Method**: `POST`  
-- **URL**: `{{baseUrl}}/hods/verify-otp`  
+- **POST** `{{baseUrl}}/hods/verify-otp`  
 - **Body (JSON)**:
-  ```json
-  {
-    "email": "your_real_email@example.com",
-    "otp": "123456"  // Replace with actual OTP
-  }
-  ```
-- **Expected**:
-  - `Status`: `200`
-  - Response contains `token`, `hod` → Save token to `hodToken`
+```json
+{
+  "email": "your_real_email@example.com",
+  "otp": "123456" // Replace with actual OTP
+}
+```
+- **Expected**: `200 OK`, contains token and `hod` object  
+- 🔧 Save `hodToken` to environment.
 
 ---
 
-### 1.3 HOD Login
+**1.3 HOD Login**
 
-- **Method**: `POST`  
-- **URL**: `{{baseUrl}}/hods/login`  
+- **POST** `{{baseUrl}}/hods/login`  
 - **Body (JSON)**:
-  ```json
-  {
-    "username": "testadmin",
-    "password": "password123"
-  }
-  ```
-- **Expected**:
-  - `Status`: `200`
-  - Response contains `token`, `hod` → Save to `hodToken`
+```json
+{
+  "username": "testadmin",
+  "password": "password123"
+}
+```
+- **Expected**: `200 OK`, contains token  
+- 🔧 Save `hodToken` to environment.
 
 ---
 
-### 1.4 Get HOD Profile
+**1.4 Get HOD Profile**
 
-- **Method**: `GET`  
-- **URL**: `{{baseUrl}}/hods/profile`  
+- **GET** `{{baseUrl}}/hods/profile`  
 - **Headers**:
-  - `Authorization`: `Bearer {{hodToken}}`  
-- **Expected**: `200`, HOD object
+  - `Authorization: Bearer {{hodToken}}`
 
 ---
 
-## 👨‍🏫 2. Professor Management
+#### 2. Professor Management
 
-### 2.1 Add Professor
+**2.1 Add Professor**
 
-- **Method**: `POST`  
-- **URL**: `{{baseUrl}}/professors`  
+- **POST** `{{baseUrl}}/professors`  
 - **Headers**: `Authorization: Bearer {{hodToken}}`  
 - **Body (JSON)**:
-  ```json
-  {
-    "name": "Professor Smith",
-    "username": "profsmith",
-    "password": "prof123456"
-  }
-  ```
-- **Expected**:
-  - `Status`: `201`
-  - Save `professorId`
+```json
+{
+  "name": "Professor Smith",
+  "username": "profsmith",
+  "password": "prof123456"
+}
+```
+- 🔧 Save `professorId` to environment.
 
 ---
 
-### 2.2 Get All Professors
+**2.2 Get All Professors**
 
-- **Method**: `GET`  
-- **URL**: `{{baseUrl}}/professors`  
-- **Headers**: `Authorization: Bearer {{hodToken}}`  
-- **Expected**: `200`, list of professors
+- **GET** `{{baseUrl}}/professors`  
+- **Headers**: `Authorization: Bearer {{hodToken}}`
 
 ---
 
-### 2.3 Get Professor by ID
+**2.3 Get Professor by ID**
 
-- **Method**: `GET`  
-- **URL**: `{{baseUrl}}/professors/{{professorId}}`  
-- **Headers**: `Authorization: Bearer {{hodToken}}`  
-- **Expected**: `200`, professor details
+- **GET** `{{baseUrl}}/professors/{{professorId}}`  
+- **Headers**: `Authorization: Bearer {{hodToken}}`
 
 ---
 
-### 2.4 Update Professor
+**2.4 Update Professor**
 
-- **Method**: `PUT`  
-- **URL**: `{{baseUrl}}/professors/{{professorId}}`  
+- **PUT** `{{baseUrl}}/professors/{{professorId}}`  
 - **Headers**: `Authorization: Bearer {{hodToken}}`  
 - **Body (JSON)**:
-  ```json
-  {
-    "name": "Professor John Smith",
-    "username": "profsmith"
-  }
-  ```
-- **Expected**: `200`, updated professor object
+```json
+{
+  "name": "Professor John Smith",
+  "username": "profsmith"
+}
+```
 
 ---
 
-### 2.5 Professor Login
+**2.5 Professor Login**
 
-- **Method**: `POST`  
-- **URL**: `{{baseUrl}}/professors/login`  
+- **POST** `{{baseUrl}}/professors/login`  
 - **Body (JSON)**:
-  ```json
-  {
-    "username": "profsmith",
-    "password": "prof123456"
-  }
-  ```
-- **Expected**:
-  - `Status`: `200`
-  - Save `professorToken`
+```json
+{
+  "username": "profsmith",
+  "password": "prof123456"
+}
+```
+- 🔧 Save `professorToken` to environment.
 
 ---
 
-## 🏫 3. Class Management
+#### 3. Class Management
 
-### 3.1 Create Class
+**3.1 Create Class**
 
-- **Method**: `POST`  
-- **URL**: `{{baseUrl}}/classes`  
+- **POST** `{{baseUrl}}/classes`  
 - **Headers**: `Authorization: Bearer {{hodToken}}`  
 - **Body (JSON)**:
-  ```json
-  {
-    "classId": "CS101",
-    "className": "Computer Science",
-    "division": "A"
-  }
-  ```
-- **Expected**: `201`, save `classId`
+```json
+{
+  "classId": "CS101",
+  "className": "Computer Science",
+  "division": "A"
+}
+```
+- 🔧 Save `classId` to environment.
 
 ---
 
-### 3.2 Get All Classes
+**3.2 Get All Classes**  
+**3.3 Get Class by ID**  
+**3.4 Update Class**
 
-- **Method**: `GET`  
-- **URL**: `{{baseUrl}}/classes`  
-- **Headers**: `Authorization: Bearer {{hodToken}}`  
-- **Expected**: `200`, list of classes
-
----
-
-### 3.3 Get Class by ID
-
-- **Method**: `GET`  
-- **URL**: `{{baseUrl}}/classes/CS101`  
-- **Headers**: `Authorization: Bearer {{hodToken}}`  
-- **Expected**: `200`, class object
+> Follow same `GET` and `PUT` structure using `{{baseUrl}}/classes` endpoints.
 
 ---
 
-### 3.4 Update Class
+#### 4. Student Management
 
-- **Method**: `PUT`  
-- **URL**: `{{baseUrl}}/classes/CS101`  
-- **Headers**: `Authorization: Bearer {{hodToken}}`  
-- **Body (JSON)**:
-  ```json
-  {
-    "className": "Introduction to Computer Science",
-    "division": "A"
-  }
-  ```
-- **Expected**: `200`, updated class object
+**4.1 Bulk Upload Students**
 
----
-
-## 👨‍🎓 4. Student Management
-
-### 4.1 Bulk Upload Students
-
-- **Method**: `POST`  
-- **URL**: `{{baseUrl}}/students/bulk-upload`  
+- **POST** `{{baseUrl}}/students/bulk-upload`  
 - **Headers**: `Authorization: Bearer {{hodToken}}`  
 - **Body (form-data)**:
-  - `file`: (Select Excel File with columns: `EnrollmentNumber`, `Name`, `Semester`)  
-- **Expected**: `201`, success + skip count
+  - `file`: Upload Excel file with columns: `EnrollmentNumber`, `Name`, `Semester`
 
 ---
 
-### 4.2 Get All Students
+**4.2 Get All Students**  
+**4.3 Filter Students by Semester**  
+**4.4 Get Student by ID**  
+**4.5 Update Student**
 
-- **Method**: `GET`  
-- **URL**: `{{baseUrl}}/students`  
-- **Headers**: `Authorization: Bearer {{hodToken}}`  
-- **Expected**: `200`, students array  
-- Save a `studentId`
+> Use relevant `GET`, `PUT`, and query param calls.
 
----
-
-### 4.3 Get Students with Filter
-
-- **Method**: `GET`  
-- **URL**: `{{baseUrl}}/students?semester=1`  
-- **Headers**: `Authorization: Bearer {{hodToken}}`  
-- **Expected**: `200`, filtered list
+- 🔧 Save one `studentId` to environment.
 
 ---
 
-### 4.4 Get Student by ID
+#### 5. Relationships – Class ↔ Students ↔ Professors
 
-- **Method**: `GET`  
-- **URL**: `{{baseUrl}}/students/{{studentId}}`  
-- **Headers**: `Authorization: Bearer {{hodToken}}`  
-- **Expected**: `200`, student object
+**5.1 Assign Students to Class**
 
----
-
-### 4.5 Update Student
-
-- **Method**: `PUT`  
-- **URL**: `{{baseUrl}}/students/{{studentId}}`  
-- **Headers**: `Authorization: Bearer {{hodToken}}`  
+- **POST** `{{baseUrl}}/classes/CS101/students`  
 - **Body (JSON)**:
-  ```json
-  {
-    "name": "Updated Student Name",
-    "semester": 2
-  }
-  ```
-- **Expected**: `200`, updated object
+```json
+{
+  "studentIds": ["{{studentId}}"]
+}
+```
 
 ---
 
-## 🔁 5. Class ↔ Student ↔ Professor Relationships
+**5.2 Assign Professors to Class**
 
-### 5.1 Assign Students to Class
-
-- **Method**: `POST`  
-- **URL**: `{{baseUrl}}/classes/CS101/students`  
-- **Headers**: `Authorization: Bearer {{hodToken}}`  
+- **POST** `{{baseUrl}}/classes/CS101/professors`  
 - **Body (JSON)**:
-  ```json
-  {
-    "studentIds": ["{{studentId}}"]
-  }
-  ```
-- **Expected**: `200`, success message
+```json
+{
+  "professorIds": ["{{professorId}}"]
+}
+```
 
 ---
 
-### 5.2 Assign Professors to Class
+**5.3 Get Professor's Classes**
 
-- **Method**: `POST`  
-- **URL**: `{{baseUrl}}/classes/CS101/professors`  
-- **Headers**: `Authorization: Bearer {{hodToken}}`  
-- **Body (JSON)**:
-  ```json
-  {
-    "professorIds": ["{{professorId}}"]
-  }
-  ```
-- **Expected**: `200`, success message
+- **GET** `{{baseUrl}}/professors/classes`  
+- **Headers**: `Authorization: Bearer {{professorToken}}`
 
 ---
 
-### 5.3 Get Professor's Classes
+**5.4 Remove Students from Class**  
+**5.5 Remove Professors from Class**
 
-- **Method**: `GET`  
-- **URL**: `{{baseUrl}}/professors/classes`  
-- **Headers**: `Authorization: Bearer {{professorToken}}`  
-- **Expected**: `200`, list of classes with students
+> Use `DELETE` with respective body JSONs like in assign steps above.
 
 ---
 
-### 5.4 Remove Students from Class
+#### 6. Cleanup (Optional)
 
-- **Method**: `DELETE`  
-- **URL**: `{{baseUrl}}/classes/CS101/students`  
-- **Headers**: `Authorization: Bearer {{hodToken}}`  
-- **Body (JSON)**:
-  ```json
-  {
-    "studentIds": ["{{studentId}}"]
-  }
-  ```
-- **Expected**: `200`, success message
+- **DELETE Student** → `{{baseUrl}}/students/{{studentId}}`  
+- **DELETE Professor** → `{{baseUrl}}/professors/{{professorId}}`  
+- **DELETE Class** → `{{baseUrl}}/classes/CS101`
 
----
-
-### 5.5 Remove Professors from Class
-
-- **Method**: `DELETE`  
-- **URL**: `{{baseUrl}}/classes/CS101/professors`  
-- **Headers**: `Authorization: Bearer {{hodToken}}`  
-- **Body (JSON)**:
-  ```json
-  {
-    "professorIds": ["{{professorId}}"]
-  }
-  ```
-- **Expected**: `200`, success message
-
----
-
-## 🧹 6. Cleanup (Optional)
-
-### 6.1 Delete Student
-
-- **Method**: `DELETE`  
-- **URL**: `{{baseUrl}}/students/{{studentId}}`  
-- **Headers**: `Authorization: Bearer {{hodToken}}`  
-- **Expected**: `200`, success message
-
----
-
-### 6.2 Delete Professor
-
-- **Method**: `DELETE`  
-- **URL**: `{{baseUrl}}/professors/{{professorId}}`  
-- **Headers**: `Authorization: Bearer {{hodToken}}`  
-- **Expected**: `200`, success message
-
----
-
-### 6.3 Delete Class
-
-- **Method**: `DELETE`  
-- **URL**: `{{baseUrl}}/classes/CS101`  
-- **Headers**: `Authorization: Bearer {{hodToken}}`  
-- **Expected**: `200`, success message
+All require `Authorization: Bearer {{hodToken}}`
 
 ---

@@ -1,243 +1,391 @@
----
+Setting Up Postman
+Create a new Postman collection named "Student Attendance System"
+Create environment variables to store tokens and IDs:
+baseUrl: http://localhost:5000/api
+hodToken
+professorToken
+hodId
+professorId
+classId
+studentId
+Testing Flow
+1. HOD Authentication
+1.1 Register HOD
+Request:
 
-### 📘 Student Attendance System – Postman API Testing Guide
-
----
-
-#### 🔧 Postman Setup
-
-1. **Create a new Postman Collection**  
-   Name it: `Student Attendance System`
-
-2. **Set Environment Variables** in Postman:
-
-| Variable        | Value                          |
-|----------------|----------------------------------|
-| `baseUrl`       | `http://localhost:5000/api`     |
-| `hodToken`      | *(To be set after login)*        |
-| `professorToken`| *(To be set after login)*        |
-| `hodId`         | *(To be set after registration)* |
-| `professorId`   | *(To be set after creation)*     |
-| `classId`       | *(To be set after creation)*     |
-| `studentId`     | *(To be set after creation)*     |
-
----
-
-### 🧪 API Testing Flow
-
----
-
-#### 1. HOD Authentication
-
-**1.1 Register HOD**
-
-- **POST** `{{baseUrl}}/hods/register`  
-- **Body (JSON)**:
-```json
+Method: POST
+URL: {{baseUrl}}/hods/register
+Body (JSON):
 {
   "collegeName": "Test College",
   "username": "testadmin",
   "password": "password123",
   "email": "your_real_email@example.com"
 }
-```
-- **Expected**: `201 Created`, contains `hodId` and `email`  
-- 🔧 Save `hodId` to environment.
 
----
+Expected Response:
 
-**1.2 Verify OTP**
+Status: 201
+Response contains hodId and email
+Save the hodId to your environment variables
+1.2 Verify OTP
+After registration, check your email for the OTP.
 
-- **POST** `{{baseUrl}}/hods/verify-otp`  
-- **Body (JSON)**:
-```json
+Request:
+
+Method: POST
+URL: {{baseUrl}}/hods/verify-otp
+Body (JSON):
 {
   "email": "your_real_email@example.com",
-  "otp": "123456" // Replace with actual OTP
+  "otp": "123456"  // Replace with the OTP from your email
 }
-```
-- **Expected**: `200 OK`, contains token and `hod` object  
-- 🔧 Save `hodToken` to environment.
 
----
+Expected Response:
 
-**1.3 HOD Login**
+Status: 200
+Response contains token and hod object
+Save the token to your hodToken environment variable
+1.3 HOD Login
+Request:
 
-- **POST** `{{baseUrl}}/hods/login`  
-- **Body (JSON)**:
-```json
+Method: POST
+URL: {{baseUrl}}/hods/login
+Body (JSON):
 {
   "username": "testadmin",
   "password": "password123"
 }
-```
-- **Expected**: `200 OK`, contains token  
-- 🔧 Save `hodToken` to environment.
 
----
+Expected Response:
 
-**1.4 Get HOD Profile**
+Status: 200
+Response contains token and hod object
+Save the token to your hodToken environment variable
+1.4 Get HOD Profile
+Request:
 
-- **GET** `{{baseUrl}}/hods/profile`  
-- **Headers**:
-  - `Authorization: Bearer {{hodToken}}`
+Method: GET
+URL: {{baseUrl}}/hods/profile
+Headers:
+Authorization: Bearer {{hodToken}}
+Expected Response:
 
----
+Status: 200
+Response contains hod object
+2. Professor Management
+2.1 Add Professor
+Request:
 
-#### 2. Professor Management
-
-**2.1 Add Professor**
-
-- **POST** `{{baseUrl}}/professors`  
-- **Headers**: `Authorization: Bearer {{hodToken}}`  
-- **Body (JSON)**:
-```json
+Method: POST
+URL: {{baseUrl}}/professors
+Headers:
+Authorization: Bearer {{hodToken}}
+Body (JSON):
 {
   "name": "Professor Smith",
   "username": "profsmith",
   "password": "prof123456"
 }
-```
-- 🔧 Save `professorId` to environment.
 
----
+Expected Response:
 
-**2.2 Get All Professors**
+Status: 201
+Response contains professor object
+Save the professor ID to your professorId environment variable
+2.2 Get All Professors
+Request:
 
-- **GET** `{{baseUrl}}/professors`  
-- **Headers**: `Authorization: Bearer {{hodToken}}`
+Method: GET
+URL: {{baseUrl}}/professors
+Headers:
+Authorization: Bearer {{hodToken}}
+Expected Response:
 
----
+Status: 200
+Response contains professors array
+2.3 Get Professor by ID
+Request:
 
-**2.3 Get Professor by ID**
+Method: GET
+URL: {{baseUrl}}/professors/{{professorId}}
+Headers:
+Authorization: Bearer {{hodToken}}
+Expected Response:
 
-- **GET** `{{baseUrl}}/professors/{{professorId}}`  
-- **Headers**: `Authorization: Bearer {{hodToken}}`
+Status: 200
+Response contains professor object
+2.4 Update Professor
+Request:
 
----
-
-**2.4 Update Professor**
-
-- **PUT** `{{baseUrl}}/professors/{{professorId}}`  
-- **Headers**: `Authorization: Bearer {{hodToken}}`  
-- **Body (JSON)**:
-```json
+Method: PUT
+URL: {{baseUrl}}/professors/{{professorId}}
+Headers:
+Authorization: Bearer {{hodToken}}
+Body (JSON):
 {
   "name": "Professor John Smith",
   "username": "profsmith"
 }
-```
 
----
+Expected Response:
 
-**2.5 Professor Login**
+Status: 200
+Response contains updated professor object
+2.5 Professor Login
+Request:
 
-- **POST** `{{baseUrl}}/professors/login`  
-- **Body (JSON)**:
-```json
+Method: POST
+URL: {{baseUrl}}/professors/login
+Body (JSON):
 {
   "username": "profsmith",
   "password": "prof123456"
 }
-```
-- 🔧 Save `professorToken` to environment.
 
----
+Expected Response:
 
-#### 3. Class Management
+Status: 200
+Response contains token and professor object
+Save the token to your professorToken environment variable
+3. Class Management
+3.1 Create Class
+Request:
 
-**3.1 Create Class**
-
-- **POST** `{{baseUrl}}/classes`  
-- **Headers**: `Authorization: Bearer {{hodToken}}`  
-- **Body (JSON)**:
-```json
+Method: POST
+URL: {{baseUrl}}/classes
+Headers:
+Authorization: Bearer {{hodToken}}
+Body (JSON):
 {
   "classId": "CS101",
   "className": "Computer Science",
   "division": "A"
 }
-```
-- 🔧 Save `classId` to environment.
 
----
+Expected Response:
 
-**3.2 Get All Classes**  
-**3.3 Get Class by ID**  
-**3.4 Update Class**
+Status: 201
+Response contains class object
+Save the class ID to your classId environment variable
+3.2 Get All Classes
+Request:
 
-> Follow same `GET` and `PUT` structure using `{{baseUrl}}/classes` endpoints.
+Method: GET
+URL: {{baseUrl}}/classes
+Headers:
+Authorization: Bearer {{hodToken}}
+Expected Response:
 
----
+Status: 200
+Response contains classes array
+3.3 Get Class by ID
+Request:
 
-#### 4. Student Management
+Method: GET
+URL: {{baseUrl}}/classes/CS101
+Headers:
+Authorization: Bearer {{hodToken}}
+Expected Response:
 
-**4.1 Bulk Upload Students**
+Status: 200
+Response contains class object
+3.4 Update Class
+Request:
 
-- **POST** `{{baseUrl}}/students/bulk-upload`  
-- **Headers**: `Authorization: Bearer {{hodToken}}`  
-- **Body (form-data)**:
-  - `file`: Upload Excel file with columns: `EnrollmentNumber`, `Name`, `Semester`
+Method: PUT
+URL: {{baseUrl}}/classes/CS101
+Headers:
+Authorization: Bearer {{hodToken}}
+Body (JSON):
+{
+  "className": "Introduction to Computer Science",
+  "division": "A"
+}
 
----
+Expected Response:
 
-**4.2 Get All Students**  
-**4.3 Filter Students by Semester**  
-**4.4 Get Student by ID**  
-**4.5 Update Student**
+Status: 200
+Response contains updated class object
+4. Student Management
+4.1 Bulk Upload Students
+Create an Excel file with the following columns:
 
-> Use relevant `GET`, `PUT`, and query param calls.
+EnrollmentNumber
+Name
+Semester
+Request:
 
-- 🔧 Save one `studentId` to environment.
+Method: POST
+URL: {{baseUrl}}/students/bulk-upload
+Headers:
+Authorization: Bearer {{hodToken}}
+Body (form-data):
+Key: file
+Value: [Select your Excel file]
+Type: File
+Expected Response:
 
----
+Status: 201
+Response contains totalUploaded and totalSkipped
+4.2 Get All Students
+Request:
 
-#### 5. Relationships – Class ↔ Students ↔ Professors
+Method: GET
+URL: {{baseUrl}}/students
+Headers:
+Authorization: Bearer {{hodToken}}
+Expected Response:
 
-**5.1 Assign Students to Class**
+Status: 200
+Response contains students array
+Save one student ID to your studentId environment variable
+4.3 Get Students with Filters
+Request:
 
-- **POST** `{{baseUrl}}/classes/CS101/students`  
-- **Body (JSON)**:
-```json
+Method: GET
+URL: {{baseUrl}}/students?semester=1
+Headers:
+Authorization: Bearer {{hodToken}}
+Expected Response:
+
+Status: 200
+Response contains filtered students array
+4.4 Get Student by ID
+Request:
+
+Method: GET
+URL: {{baseUrl}}/students/{{studentId}}
+Headers:
+Authorization: Bearer {{hodToken}}
+Expected Response:
+
+Status: 200
+Response contains student object
+4.5 Update Student
+Request:
+
+Method: PUT
+URL: {{baseUrl}}/students/{{studentId}}
+Headers:
+Authorization: Bearer {{hodToken}}
+Body (JSON):
+{
+  "name": "Updated Student Name",
+  "semester": 2
+}
+
+Expected Response:
+
+Status: 200
+Response contains updated student object
+5. Class-Student-Professor Relationships
+5.1 Assign Students to Class
+Request:
+
+Method: POST
+URL: {{baseUrl}}/classes/CS101/students
+Headers:
+Authorization: Bearer {{hodToken}}
+Body (JSON):
 {
   "studentIds": ["{{studentId}}"]
 }
-```
 
----
+Expected Response:
 
-**5.2 Assign Professors to Class**
+Status: 200
+Response contains success message
+5.2 Assign Professors to Class
+Request:
 
-- **POST** `{{baseUrl}}/classes/CS101/professors`  
-- **Body (JSON)**:
-```json
+Method: POST
+URL: {{baseUrl}}/classes/CS101/professors
+Headers:
+Authorization: Bearer {{hodToken}}
+Body (JSON):
 {
   "professorIds": ["{{professorId}}"]
 }
-```
 
----
+Expected Response:
 
-**5.3 Get Professor's Classes**
+Status: 200
+Response contains success message
+5.3 Get Professor's Classes
+Request:
 
-- **GET** `{{baseUrl}}/professors/classes`  
-- **Headers**: `Authorization: Bearer {{professorToken}}`
+Method: GET
+URL: {{baseUrl}}/professors/classes
+Headers:
+Authorization: Bearer {{professorToken}}
+Expected Response:
 
----
+Status: 200
+Response contains classes array with assigned students
+5.4 Remove Students from Class
+Request:
 
-**5.4 Remove Students from Class**  
-**5.5 Remove Professors from Class**
+Method: DELETE
+URL: {{baseUrl}}/classes/CS101/students
+Headers:
+Authorization: Bearer {{hodToken}}
+Body (JSON):
+{
+  "studentIds": ["{{studentId}}"]
+}
 
-> Use `DELETE` with respective body JSONs like in assign steps above.
+Expected Response:
 
----
+Status: 200
+Response contains success message
+5.5 Remove Professors from Class
+Request:
 
-#### 6. Cleanup (Optional)
+Method: DELETE
+URL: {{baseUrl}}/classes/CS101/professors
+Headers:
+Authorization: Bearer {{hodToken}}
+Body (JSON):
+{
+  "professorIds": ["{{professorId}}"]
+}
 
-- **DELETE Student** → `{{baseUrl}}/students/{{studentId}}`  
-- **DELETE Professor** → `{{baseUrl}}/professors/{{professorId}}`  
-- **DELETE Class** → `{{baseUrl}}/classes/CS101`
+Expected Response:
 
-All require `Authorization: Bearer {{hodToken}}`
+Status: 200
+Response contains success message
+6. Cleanup (Optional)
+6.1 Delete Student
+Request:
 
----
+Method: DELETE
+URL: {{baseUrl}}/students/{{studentId}}
+Headers:
+Authorization: Bearer {{hodToken}}
+Expected Response:
+
+Status: 200
+Response contains success message
+6.2 Delete Professor
+Request:
+
+Method: DELETE
+URL: {{baseUrl}}/professors/{{professorId}}
+Headers:
+Authorization: Bearer {{hodToken}}
+Expected Response:
+
+Status: 200
+Response contains success message
+6.3 Delete Class
+Request:
+
+Method: DELETE
+URL: {{baseUrl}}/classes/CS101
+Headers:
+Authorization: Bearer {{hodToken}}
+Expected Response:
+
+Status: 200
+Response contains success message

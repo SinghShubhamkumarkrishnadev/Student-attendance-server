@@ -37,7 +37,6 @@ const addProfessor = async (req, res) => {
     }, 201);
 
   } catch (error) {
-    console.error('Add Professor Error:', error);
     return errorResponse(res, 'Server error while adding professor', 500);
   }
 };
@@ -58,7 +57,6 @@ const getProfessors = async (req, res) => {
 
     return successResponse(res, { professors });
   } catch (error) {
-    console.error('Get Professors Error:', error);
     return errorResponse(res, 'Server error while fetching professors', 500);
   }
 };
@@ -87,7 +85,6 @@ const getProfessorById = async (req, res) => {
     return successResponse(res, { professor });
 
   } catch (error) {
-    console.error('Get Professor By ID Error:', error);
     return errorResponse(res, 'Server error while fetching professor', 500);
   }
 };
@@ -139,7 +136,6 @@ const updateProfessor = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Update Professor Error:', error);
     return errorResponse(res, 'Server error while updating professor', 500);
   }
 };
@@ -178,7 +174,6 @@ const deleteProfessor = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Delete Professor Error:', error);
     return errorResponse(res, 'Server error while deleting professor', 500);
   }
 };
@@ -221,7 +216,6 @@ const loginProfessor = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Professor Login Error:', error);
     return errorResponse(res, 'Server error during login', 500);
   }
 };
@@ -261,7 +255,6 @@ const getProfessorClasses = async (req, res) => {
     return successResponse(res, { classes: formattedClasses });
 
   } catch (error) {
-    console.error('Get Professor Classes Error:', error);
     return errorResponse(res, 'Server error while fetching classes', 500);
   }
 };

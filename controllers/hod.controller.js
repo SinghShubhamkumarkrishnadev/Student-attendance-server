@@ -52,7 +52,6 @@ const registerHOD = async (req, res) => {
     }, 201);
 
   } catch (error) {
-    console.error('HOD Registration Error:', error);
     return errorResponse(res, 'Server error during registration', 500);
   }
 };
@@ -150,7 +149,6 @@ const resendOTP = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Resend OTP Error:', error);
     return errorResponse(res, 'Server error while resending OTP', 500);
   }
 };
@@ -162,7 +160,6 @@ const resendOTP = async (req, res) => {
  */
 const loginHOD = async (req, res) => {
   try {
-    console.log('[loginHOD] req.body:', req.body); // <- add this
     const { username, password } = req.body;
 
     // Find HOD by username
@@ -200,7 +197,6 @@ const loginHOD = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('HOD Login Error:', error);
     return errorResponse(res, 'Server error during login', 500);
   }
 };
@@ -220,7 +216,6 @@ const getHODProfile = async (req, res) => {
     return successResponse(res, { hod });
 
   } catch (error) {
-    console.error('Get HOD Profile Error:', error);
     return errorResponse(res, 'Server error while fetching profile', 500);
   }
 };

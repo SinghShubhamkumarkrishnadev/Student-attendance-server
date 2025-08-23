@@ -33,7 +33,6 @@ const authenticate = async (req, res, next) => {
     
     next();
   } catch (error) {
-    console.error('Authentication Error:', error.message);
     return errorResponse(res, 'Token is invalid or expired', 401);
   }
 };
@@ -69,7 +68,6 @@ const authorizeHOD = async (req, res, next) => {
     
     next();
   } catch (error) {
-    console.error('HOD Authorization Error:', error.message);
     return errorResponse(res, 'Authorization failed', 500);
   }
 };
@@ -100,7 +98,6 @@ const authorizeProfessor = async (req, res, next) => {
     
     next();
   } catch (error) {
-    console.error('Professor Authorization Error:', error.message);
     return errorResponse(res, 'Authorization failed', 500);
   }
 };

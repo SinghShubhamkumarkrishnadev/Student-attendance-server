@@ -12,25 +12,15 @@ const { successResponse, errorResponse } = require('../utils/response.utils');
  */
 const bulkUploadStudents = async (req, res) => {
   try {
-    console.log('[bulkUploadStudents] called - req.file present?', !!req.file);
     if (!req.file) {
       return errorResponse(res, 'Please upload an Excel file', 400);
     }
-
-    // show file meta for debugging
-    console.log('[bulkUploadStudents] file metadata:', {
-      originalname: req.file.originalname,
-      mimetype: req.file.mimetype,
-      path: req.file.path,
-      size: req.file.size
-    });
 
     const hodId = req.user.id;
     const filePath = req.file.path;
 
     // Parse Excel file
     const students = await parseExcel(filePath);
-    console.log('[bulkUploadStudents] parseExcel returned:', Array.isArray(students) ? students.length : typeof students);
     if (Array.isArray(students)) console.log('[bulkUploadStudents] sample:', students.slice(0, 5));
 
     if (!students || students.length === 0) {
@@ -77,7 +67,6 @@ const bulkUploadStudents = async (req, res) => {
     }, 201);
 
   } catch (error) {
-    console.error('Bulk Upload Students Error:', error);
     return errorResponse(res, 'Server error during bulk upload', 500);
   }
 };
@@ -123,7 +112,6 @@ const getStudents = async (req, res) => {
     return successResponse(res, { students });
 
   } catch (error) {
-    console.error('Get Students Error:', error);
     return errorResponse(res, 'Server error while fetching students', 500);
   }
 };
@@ -151,7 +139,6 @@ const getStudentById = async (req, res) => {
     return successResponse(res, { student });
 
   } catch (error) {
-    console.error('Get Student By ID Error:', error);
     return errorResponse(res, 'Server error while fetching student', 500);
   }
 };
@@ -239,7 +226,6 @@ const updateStudent = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Update Student Error:', error);
     return errorResponse(res, 'Server error while updating student', 500);
   }
 };
@@ -280,7 +266,6 @@ const deleteStudent = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Delete Student Error:', error);
     return errorResponse(res, 'Server error while deleting student', 500);
   }
 };

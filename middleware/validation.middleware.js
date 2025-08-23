@@ -71,16 +71,11 @@ const validateOTP = (req, res, next) => {
 // inside middleware/validation.middleware.js
 
 const validateLogin = (req, res, next) => {
-  // debug: log incoming body and content-type so we know what client sent
-  console.log('[validateLogin] headers.content-type:', req.headers['content-type']);
-  console.log('[validateLogin] req.body (raw):', req.body);
-
   // make robust: coerce to string + trim to handle whitespace or non-string values
   const username = (req.body && typeof req.body.username !== 'undefined') ? String(req.body.username).trim() : '';
   const password = (req.body && typeof req.body.password !== 'undefined') ? String(req.body.password) : '';
 
   if (!username || !password) {
-    console.log('[validateLogin] Validation failed - username/password missing or empty. Derived values:', { username, passwordLength: password.length });
     return errorResponse(res, 'Username and password are required', 400);
   }
 

@@ -44,9 +44,6 @@ const createClass = async (req, res) => {
     }, 201);
 
   } catch (error) {
-    // Log more info for debugging
-    console.error('Create Class Error:', error);
-
     // Handle unlikely duplicate key error gracefully
     if (error && (error.code === 11000 || (error.message && error.message.includes('duplicate')))) {
       return errorResponse(res, 'Duplicate class id generated. Please try again.', 500);
@@ -72,7 +69,6 @@ const getClasses = async (req, res) => {
 
     return successResponse(res, { classes });
   } catch (error) {
-    console.error("Get Classes Error:", error);
     return errorResponse(res, "Server error while fetching classes", 500);
   }
 };
@@ -104,7 +100,6 @@ const getClassById = async (req, res) => {
     return successResponse(res, { class: classData });
 
   } catch (error) {
-    console.error('Get Class By ID Error:', error);
     return errorResponse(res, 'Server error while fetching class', 500);
   }
 };
@@ -143,7 +138,6 @@ const updateClass = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Update Class Error:', error);
     return errorResponse(res, 'Server error while updating class', 500);
   }
 };
@@ -188,7 +182,6 @@ const deleteClass = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Delete Class Error:', error);
     return errorResponse(res, 'Server error while deleting class', 500);
   }
 };
@@ -205,7 +198,6 @@ const assignStudentsToClass = async (req, res) => {
     const hodId = req.user.id;
     const { studentIds } = req.body;
 
-    console.log('[assignStudentsToClass] classId:', classId, 'studentIds:', studentIds);
 
     if (!studentIds || !Array.isArray(studentIds) || studentIds.length === 0) {
       return errorResponse(res, 'Please provide an array of student IDs', 400);
@@ -221,7 +213,6 @@ const assignStudentsToClass = async (req, res) => {
       createdBy: hodId
     });
 
-    console.log('[assignStudentsToClass] studentsFound:', studentsFound.length);
 
     if (studentsFound.length !== studentIds.length) {
       return errorResponse(res, 'One or more students not found', 404);
@@ -239,11 +230,8 @@ const assignStudentsToClass = async (req, res) => {
       { $set: { classId: classData._id } }
     );
 
-    console.log('[assignStudentsToClass] assigned students to class:', classData._id.toString());
-
     return successResponse(res, { message: `${studentIds.length} students assigned to class successfully` });
   } catch (error) {
-    console.error('Assign Students to Class Error:', error);
     return errorResponse(res, 'Server error while assigning students', 500);
   }
 };
@@ -260,8 +248,6 @@ const removeStudentsFromClass = async (req, res) => {
     const hodId = req.user.id;
     const { studentIds } = req.body;
 
-    console.log('[removeStudentsFromClass] classId:', classId, 'studentIds:', studentIds);
-
     if (!studentIds || !Array.isArray(studentIds) || studentIds.length === 0) {
       return errorResponse(res, 'Please provide an array of student IDs', 400);
     }
@@ -277,8 +263,6 @@ const removeStudentsFromClass = async (req, res) => {
       { $set: { classId: null } }
     );
 
-    console.log('[removeStudentsFromClass] student update result:', updateRes);
-
     // Remove from class.students (compare ObjectIds)
     classData.students = classData.students.filter(
       sId => !studentObjectIds.some(objId => objId.equals(sId))
@@ -287,7 +271,6 @@ const removeStudentsFromClass = async (req, res) => {
 
     return successResponse(res, { message: 'Students removed successfully' });
   } catch (error) {
-    console.error('Remove Students Error:', error);
     return errorResponse(res, 'Server error while removing students', 500);
   }
 };
@@ -303,8 +286,6 @@ const assignProfessorsToClass = async (req, res) => {
     const classId = req.params.id;
     const hodId = req.user.id;
     const { professorIds } = req.body;
-
-    console.log('[assignProfessorsToClass] classId:', classId, 'professorIds:', professorIds);
 
     if (!professorIds || !Array.isArray(professorIds) || professorIds.length === 0) {
       return errorResponse(res, 'Please provide an array of professor IDs', 400);
@@ -338,7 +319,6 @@ const assignProfessorsToClass = async (req, res) => {
 
     return successResponse(res, { message: `${professorIds.length} professors assigned to class successfully` });
   } catch (error) {
-    console.error('Assign Professors to Class Error:', error);
     return errorResponse(res, 'Server error while assigning professors', 500);
   }
 };
@@ -354,8 +334,6 @@ const removeProfessorsFromClass = async (req, res) => {
     const classId = req.params.id;
     const hodId = req.user.id;
     const { professorIds } = req.body;
-
-    console.log('[removeProfessorsFromClass] classId:', classId, 'professorIds:', professorIds);
 
     if (!professorIds || !Array.isArray(professorIds) || professorIds.length === 0) {
       return errorResponse(res, 'Please provide an array of professor IDs', 400);
@@ -380,7 +358,6 @@ const removeProfessorsFromClass = async (req, res) => {
 
     return successResponse(res, { message: `Professors removed from class successfully` });
   } catch (error) {
-    console.error('Remove Professors from Class Error:', error);
     return errorResponse(res, 'Server error while removing professors', 500);
   }
 };

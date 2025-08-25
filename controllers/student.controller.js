@@ -320,11 +320,79 @@ const deleteStudentsBulk = async (req, res) => {
   }
 };
 
+/**
+ * @desc    Add a single student
+ * @route   POST /api/students
+ * @access  Private (HOD only)
+ */
+const addStudent = async (req, res) => {
+  try {
+    const hodId = req.user.id;
+    let { enrollmentNumber, name, semester, division, classId } = req.body;
+
+    // Validate required fields
+    if (!enrollmentNumber || !name || !semester) {
+      return errorResponse(res, "Enrollment number, name, and semester are required", 400);
+    }
+
+    // Check for duplicate enrollmentNumber
+    const existing = await Student.findOne({ enrollmentNumber });
+    if (existing) {
+      return errorResponse(res, "Student with this enrollment number already exists", 400);
+    }
+
+    let resolvedClassId = null;
+
+    if (classId) {
+      if (mongoose.Types.ObjectId.isValid(classId)) {
+        const cls = await Class.findOne({ _id: classId, createdBy: hodId }).select("_id");
+        if (!cls) return errorResponse(res, "Class not found", 404);
+        resolvedClassId = cls._id;
+      } else {
+        // treat as human class code
+        const cls = await Class.findOne({ classId, createdBy: hodId }).select("_id");
+        if (!cls) return errorResponse(res, "Class not found", 404);
+        resolvedClassId = cls._id;
+      }
+    }
+
+    // Create student
+    const student = new Student({
+      enrollmentNumber,
+      name,
+      semester,
+      division: division || null,
+      classId: resolvedClassId,
+      createdBy: hodId
+    });
+
+    await student.save();
+
+    // If class assigned, also push student._id into Class.students
+    if (resolvedClassId) {
+      await Class.updateOne(
+        { _id: resolvedClassId },
+        { $addToSet: { students: student._id } }
+      );
+    }
+
+    return successResponse(res, {
+      message: "Student added successfully",
+      student
+    }, 201);
+
+  } catch (error) {
+    console.error("[addStudent]", error);
+    return errorResponse(res, "Server error while adding student", 500);
+  }
+};
+
 module.exports = {
   bulkUploadStudents,
   getStudents,
   getStudentById,
   updateStudent,
   deleteStudent,
-  deleteStudentsBulk   
+  deleteStudentsBulk,
+  addStudent   
 };

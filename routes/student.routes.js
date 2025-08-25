@@ -29,4 +29,7 @@ router.delete('/:id', studentController.deleteStudent);
 // Bulk delete students
 router.delete('/', studentController.deleteStudentsBulk);
 
+// Add single student
+router.post("/", studentController.addStudent);
+
 module.exports = router;

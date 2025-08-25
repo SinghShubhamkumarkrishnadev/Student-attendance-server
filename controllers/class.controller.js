@@ -242,39 +242,47 @@ const assignStudentsToClass = async (req, res) => {
  * @route   DELETE /api/classes/:id/students
  * @access  Private (HOD only)
  */
+// ====================== REMOVE STUDENTS FROM CLASS ======================
 const removeStudentsFromClass = async (req, res) => {
   try {
     const classId = req.params.id;
     const hodId = req.user.id;
-    const { studentIds } = req.body;
 
-    if (!studentIds || !Array.isArray(studentIds) || studentIds.length === 0) {
-      return errorResponse(res, 'Please provide an array of student IDs', 400);
+    let studentIds = req.body?.studentIds || req.query?.studentIds;
+
+    if (typeof studentIds === "string") {
+      studentIds = studentIds.split(",");
+    }
+
+    if (!Array.isArray(studentIds) || studentIds.length === 0) {
+      return errorResponse(res, "Please provide an array of student IDs", 400);
     }
 
     const classData = await Class.findOne({ _id: classId, createdBy: hodId });
-    if (!classData) return errorResponse(res, 'Class not found', 404);
+    if (!classData) return errorResponse(res, "Class not found", 404);
 
-    const studentObjectIds = studentIds.map(id => new mongoose.Types.ObjectId(id));
+    const studentObjectIds = studentIds.map(
+      (id) => new mongoose.Types.ObjectId(id)
+    );
 
-    // Remove classId only where it equals this class._id
-    const updateRes = await Student.updateMany(
+    // 1) Update students collection → set classId = null
+    await Student.updateMany(
       { _id: { $in: studentObjectIds }, classId: classData._id },
       { $set: { classId: null } }
     );
 
-    // Remove from class.students (compare ObjectIds)
-    classData.students = classData.students.filter(
-      sId => !studentObjectIds.some(objId => objId.equals(sId))
+    // 2) Remove ObjectIds from "students" array in Class
+    await Class.updateOne(
+      { _id: classData._id },
+      { $pull: { students: { $in: studentObjectIds } } }
     );
-    await classData.save();
 
-    return successResponse(res, { message: 'Students removed successfully' });
+    return successResponse(res, { message: "Students removed successfully" });
   } catch (error) {
-    return errorResponse(res, 'Server error while removing students', 500);
+    console.error("removeStudentsFromClass error:", error);
+    return errorResponse(res, "Server error while removing students", 500);
   }
 };
-
 
 /**
  * @desc    Assign professors to class

@@ -270,10 +270,61 @@ const deleteStudent = async (req, res) => {
   }
 };
 
+/**
+ * @desc    Bulk delete students
+ * @route   DELETE /api/students
+ * @access  Private (HOD only)
+ * @body    { studentIds: [ "id1", "id2", ... ] }
+ */
+const deleteStudentsBulk = async (req, res) => {
+  try {
+    const { studentIds } = req.body;
+    const hodId = req.user.id;
+
+    if (!Array.isArray(studentIds) || studentIds.length === 0) {
+      return errorResponse(res, "No studentIds provided", 400);
+    }
+
+    // Find students belonging to this HOD
+    const students = await Student.find({
+      _id: { $in: studentIds },
+      createdBy: hodId
+    });
+
+    if (students.length === 0) {
+      return errorResponse(res, "No students found for deletion", 404);
+    }
+
+    // Remove student refs from their classes
+    const classUpdates = students
+      .filter(s => s.classId)
+      .map(s =>
+        Class.updateOne({ _id: s.classId }, { $pull: { students: s._id } })
+      );
+
+    await Promise.all(classUpdates);
+
+    // Delete students in one go
+    const result = await Student.deleteMany({
+      _id: { $in: studentIds },
+      createdBy: hodId
+    });
+
+    return successResponse(res, {
+      message: `${result.deletedCount} students deleted successfully`,
+      deletedCount: result.deletedCount
+    });
+  } catch (error) {
+    console.error("[deleteStudentsBulk]", error);
+    return errorResponse(res, "Server error while bulk deleting students", 500);
+  }
+};
+
 module.exports = {
   bulkUploadStudents,
   getStudents,
   getStudentById,
   updateStudent,
-  deleteStudent
+  deleteStudent,
+  deleteStudentsBulk   
 };

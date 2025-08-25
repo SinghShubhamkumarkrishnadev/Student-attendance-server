@@ -156,7 +156,7 @@ const updateStudent = async (req, res) => {
   try {
     const studentId = req.params.id;
     const hodId = req.user.id;
-    let { name, semester, classId, division } = req.body;
+    let { name, enrollmentNumber, semester, classId, division } = req.body;
 
     // Find student by ID and created by this HOD
     let student = await Student.findOne({
@@ -168,48 +168,38 @@ const updateStudent = async (req, res) => {
       return errorResponse(res, 'Student not found', 404);
     }
 
-    // If changing class, ensure we resolve classId to Class._id and update classes arrays accordingly
+    // ⚠️ If enrollmentNumber is being updated, check uniqueness
+    if (enrollmentNumber && enrollmentNumber !== student.enrollmentNumber) {
+      const existing = await Student.findOne({ enrollmentNumber });
+      if (existing) {
+        return errorResponse(res, 'Student with this enrollment number already exists', 400);
+      }
+      student.enrollmentNumber = enrollmentNumber;
+    }
+
+    // Handle class change logic
     if (classId) {
       let newClassId = null;
-
-      // If classId looks like an ObjectId, try to find by _id
       if (mongoose.Types.ObjectId.isValid(classId)) {
         const cls = await Class.findOne({ _id: classId, createdBy: hodId }).select('_id');
-        if (!cls) {
-          return errorResponse(res, 'Class not found', 404);
-        }
+        if (!cls) return errorResponse(res, 'Class not found', 404);
         newClassId = cls._id;
       } else {
-        // treat as human class code
-        const cls = await Class.findOne({ classId: classId, createdBy: hodId }).select('_id');
-        if (!cls) {
-          return errorResponse(res, 'Class not found', 404);
-        }
+        const cls = await Class.findOne({ classId, createdBy: hodId }).select('_id');
+        if (!cls) return errorResponse(res, 'Class not found', 404);
         newClassId = cls._id;
       }
 
-      // If newClassId is same as current student.classId → no class-change
       if (!student.classId || String(newClassId) !== String(student.classId)) {
-        // Remove from old class (if existed) by matching Class _id
         if (student.classId) {
-          await Class.updateOne(
-            { _id: student.classId },
-            { $pull: { students: studentId } }
-          );
+          await Class.updateOne({ _id: student.classId }, { $pull: { students: studentId } });
         }
-
-        // Add to new class
-        await Class.updateOne(
-          { _id: newClassId },
-          { $addToSet: { students: studentId } }
-        );
-
-        // set student's classId to the Class _id
+        await Class.updateOne({ _id: newClassId }, { $addToSet: { students: studentId } });
         student.classId = newClassId;
       }
     }
 
-    // Update student fields
+    // Update other fields
     if (name) student.name = name;
     if (semester) {
       const semNum = Number(semester);
@@ -217,7 +207,6 @@ const updateStudent = async (req, res) => {
     }
     if (division !== undefined) student.division = division;
 
-    // Save updated student
     await student.save();
 
     return successResponse(res, {
@@ -229,6 +218,7 @@ const updateStudent = async (req, res) => {
     return errorResponse(res, 'Server error while updating student', 500);
   }
 };
+
 
 /**
  * @desc    Delete student

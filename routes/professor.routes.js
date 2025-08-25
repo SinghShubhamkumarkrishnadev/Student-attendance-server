@@ -1,61 +1,78 @@
 const express = require('express');
 const router = express.Router();
 const professorController = require('../controllers/professor.controller');
-const { 
-  authenticate, 
-  authorizeHOD, 
-  authorizeProfessor 
+const {
+  authenticate,
+  authorizeHOD,
+  authorizeProfessor
 } = require('../middleware/auth.middleware');
-const { 
-  validateProfessor, 
-  validateLogin 
+const {
+  validateProfessor,
+  validateLogin
 } = require('../middleware/validation.middleware');
+const { handleExcelUpload } = require('../middleware/upload.middleware'); // MUST exist (same as classes)
 
 // Public routes
 router.post('/login', validateLogin, professorController.loginProfessor);
 
 // HOD routes for managing professors
+// NOTE: put bulk-upload and bulk before parameterized routes
 router.post(
-  '/', 
-  authenticate, 
-  authorizeHOD, 
-  validateProfessor, 
+  '/bulk-upload',
+  authenticate,
+  authorizeHOD,
+  handleExcelUpload, // middleware that places file on req.file
+  professorController.bulkUploadProfessors
+);
+
+router.delete(
+  '/bulk',
+  authenticate,
+  authorizeHOD,
+  professorController.bulkDeleteProfessors
+);
+
+router.post(
+  '/',
+  authenticate,
+  authorizeHOD,
+  validateProfessor,
   professorController.addProfessor
 );
 
 router.get(
-  '/', 
-  authenticate, 
-  authorizeHOD, 
+  '/',
+  authenticate,
+  authorizeHOD,
   professorController.getProfessors
 );
 
 router.get(
-  '/:id', 
-  authenticate, 
-  authorizeHOD, 
+  '/:id',
+  authenticate,
+  authorizeHOD,
   professorController.getProfessorById
 );
 
 router.put(
-  '/:id', 
-  authenticate, 
-  authorizeHOD, 
+  '/:id',
+  authenticate,
+  authorizeHOD,
   professorController.updateProfessor
 );
 
 router.delete(
-  '/:id', 
-  authenticate, 
-  authorizeHOD, 
+  '/:id',
+  authenticate,
+  authorizeHOD,
   professorController.deleteProfessor
 );
 
 // Professor routes
 router.get(
-  '/classes', 
-  authenticate, 
-  authorizeProfessor, 
+  '/classes',
+  authenticate,
+  authorizeProfessor,
   professorController.getProfessorClasses
 );
 

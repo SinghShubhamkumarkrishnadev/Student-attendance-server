@@ -4,6 +4,103 @@ const Professor = require('../models/professor.model');
 const Counter = require('../models/counter.model'); // <-- ADD THIS LINE
 const { successResponse, errorResponse } = require('../utils/response.utils');
 const mongoose = require('mongoose');
+const XLSX = require('xlsx');
+const fs = require('fs');
+const path = require('path');
+
+/**
+ * Parse Excel file for classes
+ * @param {String} filePath
+ * @returns {Array} Array of { className, division }
+ */
+const parseClassExcel = async (filePath) => {
+  if (!fs.existsSync(filePath)) return [];
+  const workbook = XLSX.readFile(filePath);
+  const sheetName = workbook.SheetNames[0];
+  const worksheet = workbook.Sheets[sheetName];
+  const raw = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+  // Normalize headers
+  const normalizeHeader = h => String(h || '').trim().toLowerCase().replace(/[\s_]+/g, '');
+  const headerMap = {};
+  Object.keys(raw[0] || {}).forEach(k => {
+    headerMap[normalizeHeader(k)] = k;
+  });
+
+  const classNameHeader = headerMap['classname'] || headerMap['class'] || headerMap['name'];
+  const divisionHeader = headerMap['division'] || headerMap['section'] || headerMap['div'];
+
+  if (!classNameHeader || !divisionHeader) return [];
+
+  const classes = raw.map(row => ({
+    className: String(row[classNameHeader] || '').trim(),
+    division: String(row[divisionHeader] || '').trim()
+  })).filter(c => c.className && c.division);
+
+  // Remove temp file
+  fs.unlink(filePath, () => { });
+
+  return classes;
+};
+
+const bulkUploadClasses = async (req, res) => {
+  try {
+    if (!req.file) return errorResponse(res, 'Please upload an Excel file', 400);
+
+    const hodId = req.user.id;
+    const filePath = req.file.path;
+
+    const classes = await parseClassExcel(filePath);
+    if (!classes || classes.length === 0) return errorResponse(res, 'No valid class data found', 400);
+
+    // Fetch existing classes for this HOD
+    const existingClasses = await Class.find({ createdBy: hodId })
+      .select('className division');
+
+    const existingSet = new Set(
+      existingClasses.map(c => `${c.className.toLowerCase()}||${c.division.toLowerCase()}`)
+    );
+
+    const classesToInsert = classes.filter(c => {
+      const key = `${c.className.toLowerCase()}||${c.division.toLowerCase()}`;
+      return !existingSet.has(key);
+    });
+
+    if (classesToInsert.length === 0) {
+      return errorResponse(res, 'All classes in the file already exist in the database', 400);
+    }
+
+    const insertedClasses = [];
+    for (let cls of classesToInsert) {
+      const counter = await Counter.findOneAndUpdate(
+        { hod: hodId },
+        { $inc: { seq: 1 } },
+        { new: true, upsert: true, setDefaultsOnInsert: true }
+      );
+
+      const newClass = await Class.create({
+        classId: counter.seq,
+        className: cls.className,
+        division: cls.division,
+        students: [],
+        professors: [],
+        createdBy: hodId
+      });
+      insertedClasses.push(newClass);
+    }
+
+    return successResponse(res, {
+      message: `${insertedClasses.length} classes uploaded successfully`,
+      totalUploaded: insertedClasses.length,
+      totalSkipped: classes.length - classesToInsert.length
+    }, 201);
+
+  } catch (error) {
+    console.error('bulkUploadClasses error:', error);
+    return errorResponse(res, 'Server error during bulk class upload', 500);
+  }
+};
+
 
 /**
  * @desc    Create a new class
@@ -372,6 +469,88 @@ const removeProfessorsFromClass = async (req, res) => {
 
 
 
+/**
+ * @desc    Bulk delete classes (with cleanup)
+ * @route   DELETE /api/classes/bulk
+ * @access  Private (HOD only)
+ * @body    { classIds: string[] } OR query ?classIds=comma,separated,ids
+ */
+const bulkDeleteClasses = async (req, res) => {
+  const hodId = req.user.id;
+
+  try {
+    let classIds = req.body?.classIds || req.query?.classIds;
+
+    if (typeof classIds === 'string') {
+      classIds = classIds.split(',').map(s => s.trim()).filter(Boolean);
+    }
+
+    if (!Array.isArray(classIds) || classIds.length === 0) {
+      return errorResponse(res, 'Please provide an array of class IDs', 400);
+    }
+
+    // Validate ObjectIds and keep only valid ones
+    const validIds = classIds.filter(mongoose.Types.ObjectId.isValid);
+    if (validIds.length === 0) {
+      return errorResponse(res, 'No valid class IDs provided', 400);
+    }
+
+    // Ensure classes belong to this HOD
+    const classes = await Class.find({
+      _id: { $in: validIds },
+      createdBy: hodId
+    }).select('_id');
+
+    if (!classes.length) {
+      return errorResponse(res, 'No classes found for deletion', 404);
+    }
+
+    const classObjectIds = classes.map(c => c._id);
+
+    // Use a transaction for consistency
+    const session = await mongoose.startSession();
+    try {
+      await session.withTransaction(async () => {
+        // 1) Detach students from these classes
+        await Student.updateMany(
+          { classId: { $in: classObjectIds } },
+          { $set: { classId: null } },
+          { session }
+        );
+
+        // 2) Pull class references from professors
+        await Professor.updateMany(
+          { classes: { $in: classObjectIds } },
+          { $pull: { classes: { $in: classObjectIds } } },
+          { session }
+        );
+
+        // 3) Delete classes
+        await Class.deleteMany(
+          { _id: { $in: classObjectIds }, createdBy: hodId },
+          { session }
+        );
+      });
+    } finally {
+      await session.endSession();
+    }
+
+    const notFoundOrUnauthorized = validIds.filter(
+      id => !classObjectIds.some(objId => objId.equals(id))
+    );
+
+    return successResponse(res, {
+      message: `${classObjectIds.length} classes deleted successfully`,
+      totalDeleted: classObjectIds.length,
+      totalRequested: validIds.length,
+      notDeleted: notFoundOrUnauthorized // IDs not found or not owned by HOD
+    });
+  } catch (error) {
+    console.error('bulkDeleteClasses error:', error);
+    return errorResponse(res, 'Server error while bulk deleting classes', 500);
+  }
+};
+
 
 module.exports = {
   createClass,
@@ -382,5 +561,7 @@ module.exports = {
   assignStudentsToClass,
   removeStudentsFromClass,
   assignProfessorsToClass,
-  removeProfessorsFromClass
+  removeProfessorsFromClass,
+  bulkUploadClasses,
+  bulkDeleteClasses 
 };

@@ -2,9 +2,17 @@ const express = require('express');
 const router = express.Router();
 const classController = require('../controllers/class.controller');
 const { authenticate, authorizeHOD } = require('../middleware/auth.middleware');
+const { handleExcelUpload } = require('../middleware/upload.middleware');
 
 // All routes require HOD authentication
 router.use(authenticate, authorizeHOD);
+
+// Bulk upload classes (POST)
+router.post('/bulk-upload', handleExcelUpload, classController.bulkUploadClasses);
+
+// ✅ Bulk delete classes (DELETE)
+// Accepts body: { classIds: [...] } OR query: ?classIds=id1,id2
+router.delete('/bulk', classController.bulkDeleteClasses);
 
 // Create a new class
 router.post('/', classController.createClass);

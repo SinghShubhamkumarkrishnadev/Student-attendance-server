@@ -66,18 +66,21 @@ async function cascadeDelete(hodId) {
   const Professor = mongoose.model("Professor");
   const Student = mongoose.model("Student");
   const ClassModel = mongoose.model("Class");
+  const Counter = mongoose.model("Counter");
 
   const Attendance = mongoose.models.Attendance || null;
   const Subject = mongoose.models.Subject || null;
 
   await Promise.all([
-    Professor.deleteMany({ hod: hodId }),
-    Student.deleteMany({ hod: hodId }),
-    ClassModel.deleteMany({ hod: hodId }),
-    Attendance ? Attendance.deleteMany({ hod: hodId }) : Promise.resolve(),
-    Subject ? Subject.deleteMany({ hod: hodId }) : Promise.resolve(),
+    Professor.deleteMany({ createdBy: hodId }),
+    Student.deleteMany({ createdBy: hodId }),
+    ClassModel.deleteMany({ createdBy: hodId }),
+    Counter.deleteOne({ hod: hodId }), 
+    Attendance ? Attendance.deleteMany({ createdBy: hodId }) : Promise.resolve(),
+    Subject ? Subject.deleteMany({ createdBy: hodId }) : Promise.resolve(),
   ]);
 }
+
 
 hodSchema.pre("findOneAndDelete", async function (next) {
   try {

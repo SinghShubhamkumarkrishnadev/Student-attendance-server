@@ -2,10 +2,12 @@ const express = require('express');
 const router = express.Router();
 const hodController = require('../controllers/hod.controller');
 const { authenticate, authorizeHOD } = require('../middleware/auth.middleware');
-const { 
-  validateHODRegistration, 
-  validateOTP, 
-  validateLogin 
+const {
+  validateHODRegistration,
+  validateOTP,          // email + otp (registration email verify)
+  validateLogin,
+  validateHODUpdate,
+  validateOTPOnly       // otp only (update verify + delete confirm)
 } = require('../middleware/validation.middleware');
 
 // Public routes
@@ -16,5 +18,38 @@ router.post('/login', validateLogin, hodController.loginHOD);
 
 // Protected routes
 router.get('/profile', authenticate, authorizeHOD, hodController.getHODProfile);
+
+// Update HOD (email/password → OTP, username/college direct)
+router.put(
+  '/update',
+  authenticate,
+  authorizeHOD,
+  validateHODUpdate,
+  hodController.updateHOD
+);
+
+// Verify OTP for email/password update (auth only; no authorizeHOD)
+router.post(
+  '/verify-update-otp',
+  authenticate,
+  validateOTPOnly,
+  hodController.verifyUpdateOTP
+);
+
+// Delete flow with OTP
+router.post(
+  '/delete-request',
+  authenticate,
+  authorizeHOD,
+  hodController.sendDeleteOTP
+);
+
+router.post(
+  '/confirm-delete',
+  authenticate,
+  authorizeHOD,
+  validateOTPOnly,
+  hodController.confirmDeleteHOD
+);
 
 module.exports = router;

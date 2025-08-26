@@ -20,20 +20,30 @@ const generateOTP = () => {
    * @param {Date} expiresAt - Expiry timestamp
    * @returns {Boolean} True if OTP is valid and not expired
    */
-  const verifyOTP = (inputOTP, storedOTP, expiresAt) => {
-    // Check if OTP matches
-    if (inputOTP !== storedOTP) {
-      return false;
-    }
-    
-    // Check if OTP is expired
-    const now = new Date();
-    if (now > new Date(expiresAt)) {
-      return false;
-    }
-    
-    return true;
-  };
+  /**
+ * Verify if OTP is valid and not expired
+ * @param {String} inputOTP - OTP provided by user
+ * @param {String} storedOTP - OTP stored in database
+ * @param {Date} expiresAt - Expiry timestamp
+ * @returns {"valid" | "expired" | "invalid"}
+ */
+const verifyOTP = (inputOTP, storedOTP, expiresAt) => {
+  if (!storedOTP || !expiresAt) {
+    return "invalid";
+  }
+
+  if (inputOTP !== storedOTP) {
+    return "invalid";
+  }
+
+  const now = new Date();
+  if (now > new Date(expiresAt)) {
+    return "expired";
+  }
+
+  return "valid";
+};
+
   
   module.exports = {
     generateOTP,

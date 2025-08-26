@@ -14,8 +14,8 @@ const registerHOD = async (req, res) => {
     const { collegeName, username, password, email } = req.body;
 
     // Check if HOD already exists
-    const hodExists = await HOD.findOne({ 
-      $or: [{ email }, { username }] 
+    const hodExists = await HOD.findOne({
+      $or: [{ email }, { username }]
     });
 
     if (hodExists) {
@@ -44,14 +44,18 @@ const registerHOD = async (req, res) => {
     // Send OTP email
     await sendOTPEmail(email, otp, collegeName);
 
-    // Return success without sensitive data
-    return successResponse(res, {
-      message: 'Registration initiated. Please verify your email with the OTP sent.',
-      hodId: hod._id,
-      email: hod.email
-    }, 201);
-
+    return successResponse(
+      res,
+      {
+        message:
+          'Registration initiated. Please verify your email with the OTP sent.',
+        hodId: hod._id,
+        email: hod.email
+      },
+      201
+    );
   } catch (error) {
+    console.error('Register HOD Error:', error);
     return errorResponse(res, 'Server error during registration', 500);
   }
 };
@@ -65,32 +69,35 @@ const verifyOTPHandler = async (req, res) => {
   try {
     const { email, otp } = req.body;
 
-    // Find HOD by email
     const hod = await HOD.findOne({ email });
-    if (!hod) {
-      return errorResponse(res, 'HOD not found', 404);
-    }
+    if (!hod) return errorResponse(res, 'HOD not found', 404);
 
-    // If already verified
     if (hod.verified) {
       return errorResponse(res, 'Email already verified', 400);
     }
 
-    // Verify OTP
-    const isValid = verifyOTP(otp, hod.otp.code, hod.otp.expiresAt);
-    if (!isValid) {
-      return errorResponse(res, 'Invalid or expired OTP', 400);
+    // verifyOTP now returns "valid" | "expired" | "invalid"
+    const status = verifyOTP(otp, hod.otp?.code, hod.otp?.expiresAt);
+
+    if (status === 'invalid') {
+      return errorResponse(res, 'Invalid OTP', 400);
     }
 
-    // Update HOD to verified status
+    if (status === 'expired') {
+      // clear expired OTP so DB doesn't keep stale OTPs
+      hod.otp = undefined;
+      await hod.save();
+      return errorResponse(res, 'OTP expired. Please request a new one.', 400);
+    }
+
+    // valid
     hod.verified = true;
-    hod.otp = undefined; // Clear OTP after verification
+    hod.otp = undefined;
     await hod.save();
 
-    // Generate token
-    const token = generateToken({ 
-      id: hod._id, 
-      role: 'hod' 
+    const token = generateToken({
+      id: hod._id,
+      role: 'hod'
     });
 
     return successResponse(res, {
@@ -103,7 +110,6 @@ const verifyOTPHandler = async (req, res) => {
         email: hod.email
       }
     });
-
   } catch (error) {
     console.error('OTP Verification Error:', error);
     return errorResponse(res, 'Server error during verification', 500);
@@ -119,36 +125,30 @@ const resendOTP = async (req, res) => {
   try {
     const { email } = req.body;
 
-    // Find HOD by email
     const hod = await HOD.findOne({ email });
-    if (!hod) {
-      return errorResponse(res, 'HOD not found', 404);
-    }
+    if (!hod) return errorResponse(res, 'HOD not found', 404);
 
-    // If already verified
     if (hod.verified) {
       return errorResponse(res, 'Email already verified', 400);
     }
 
-    // Generate new OTP
-    const { otp, expiresAt } = generateOTP();
+    // If stored OTP exists and is expired, clear it first (cleanup)
+    if (hod.otp?.expiresAt && new Date() > new Date(hod.otp.expiresAt)) {
+      hod.otp = undefined;
+    }
 
-    // Update HOD with new OTP
-    hod.otp = {
-      code: otp,
-      expiresAt
-    };
+    const { otp, expiresAt } = generateOTP();
+    hod.otp = { code: otp, expiresAt };
     await hod.save();
 
-    // Send OTP email
     await sendOTPEmail(email, otp, hod.collegeName);
 
     return successResponse(res, {
       message: 'OTP resent successfully',
       email: hod.email
     });
-
   } catch (error) {
+    console.error('Resend OTP Error:', error);
     return errorResponse(res, 'Server error while resending OTP', 500);
   }
 };
@@ -162,27 +162,23 @@ const loginHOD = async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    // Find HOD by username
     const hod = await HOD.findOne({ username });
-    if (!hod) {
-      return errorResponse(res, 'Invalid credentials', 401);
-    }
+    if (!hod) return errorResponse(res, 'Invalid credentials', 401);
 
-    // Check if email is verified
     if (!hod.verified) {
-      return errorResponse(res, 'Email not verified. Please verify your email first.', 401);
+      return errorResponse(
+        res,
+        'Email not verified. Please verify your email first.',
+        401
+      );
     }
 
-    // Check password
     const isMatch = await hod.comparePassword(password);
-    if (!isMatch) {
-      return errorResponse(res, 'Invalid credentials', 401);
-    }
+    if (!isMatch) return errorResponse(res, 'Invalid credentials', 401);
 
-    // Generate token
-    const token = generateToken({ 
-      id: hod._id, 
-      role: 'hod' 
+    const token = generateToken({
+      id: hod._id,
+      role: 'hod'
     });
 
     return successResponse(res, {
@@ -195,8 +191,8 @@ const loginHOD = async (req, res) => {
         email: hod.email
       }
     });
-
   } catch (error) {
+    console.error('Login HOD Error:', error);
     return errorResponse(res, 'Server error during login', 500);
   }
 };
@@ -204,19 +200,207 @@ const loginHOD = async (req, res) => {
 /**
  * @desc    Get HOD profile
  * @route   GET /api/hods/profile
- * @access  Private (HOD only)
+ * @access  Private
  */
 const getHODProfile = async (req, res) => {
   try {
-    const hod = await HOD.findById(req.user.id).select('-password -otp');
-    if (!hod) {
-      return errorResponse(res, 'HOD not found', 404);
-    }
+    const hod = await HOD.findById(req.user.id).select('-password -otp -deleteOtp');
+    if (!hod) return errorResponse(res, 'HOD not found', 404);
 
     return successResponse(res, { hod });
-
   } catch (error) {
+    console.error('Get HOD Profile Error:', error);
     return errorResponse(res, 'Server error while fetching profile', 500);
+  }
+};
+
+/**
+ * @desc    Update HOD profile
+ * @route   PUT /api/hods/update
+ * @access  Private
+ */
+const updateHOD = async (req, res) => {
+  try {
+    const { collegeName, username, email, password } = req.body;
+    const hod = await HOD.findById(req.user.id);
+
+    if (!hod) return errorResponse(res, 'HOD not found', 404);
+
+    let otpTriggered = false;
+
+    // Username update
+    if (username && username !== hod.username) {
+      const usernameExists = await HOD.findOne({ username });
+      if (usernameExists) return errorResponse(res, 'Username already taken', 400);
+      hod.username = username;
+    }
+
+    // College name update
+    if (collegeName) hod.collegeName = collegeName;
+
+    // Email/Password update -> needs OTP
+    if ((email && email !== hod.email) || password) {
+      const { otp, expiresAt } = generateOTP();
+      hod.otp = { code: otp, expiresAt };
+      hod.pendingUpdates = {};
+
+      if (email && email !== hod.email) {
+        const emailExists = await HOD.findOne({ email });
+        if (emailExists) return errorResponse(res, 'Email already in use', 400);
+
+        hod.pendingUpdates.email = email;
+        hod.verified = false;
+      }
+
+      if (password) {
+        hod.pendingUpdates.password = password;
+      }
+
+      otpTriggered = true;
+      await sendOTPEmail(email || hod.email, otp, hod.collegeName);
+    }
+
+    await hod.save();
+
+    if (otpTriggered) {
+      return successResponse(res, {
+        message: 'OTP sent to your email. Please verify to confirm changes.',
+        email: email || hod.email
+      });
+    }
+
+    return successResponse(res, {
+      message: 'Profile updated successfully',
+      hod: {
+        id: hod._id,
+        username: hod.username,
+        collegeName: hod.collegeName,
+        email: hod.email,
+        verified: hod.verified
+      }
+    });
+  } catch (error) {
+    console.error('Update HOD Error:', error);
+    return errorResponse(res, 'Server error while updating profile', 500);
+  }
+};
+
+/**
+ * @desc    Verify OTP for email/password update
+ * @route   POST /api/hods/verify-update-otp
+ * @access  Private
+ */
+const verifyUpdateOTP = async (req, res) => {
+  try {
+    const { otp } = req.body;
+    const hod = await HOD.findById(req.user.id);
+
+    if (!hod || !hod.otp) return errorResponse(res, 'No pending update found', 400);
+
+    const status = verifyOTP(otp, hod.otp.code, hod.otp.expiresAt);
+    if (status === 'invalid') {
+      return errorResponse(res, 'Invalid OTP', 400);
+    }
+    if (status === 'expired') {
+      // clear expired OTP and pending updates
+      hod.otp = undefined;
+      hod.pendingUpdates = undefined;
+      await hod.save();
+      return errorResponse(res, 'OTP expired. Please request update again.', 400);
+    }
+
+    // valid -> apply pending updates
+    if (hod.pendingUpdates?.email) {
+      hod.email = hod.pendingUpdates.email;
+      hod.verified = true;
+    }
+
+    if (hod.pendingUpdates?.password) {
+      hod.password = hod.pendingUpdates.password;
+    }
+
+    hod.otp = undefined;
+    hod.pendingUpdates = undefined;
+
+    await hod.save();
+
+    return successResponse(res, {
+      message: 'Update verified and applied successfully',
+      hod: {
+        id: hod._id,
+        username: hod.username,
+        collegeName: hod.collegeName,
+        email: hod.email,
+        verified: hod.verified
+      }
+    });
+  } catch (error) {
+    console.error('Verify Update OTP Error:', error);
+    return errorResponse(res, 'Server error during update verification', 500);
+  }
+};
+
+/**
+ * @desc    Send OTP for account deletion
+ * @route   POST /api/hods/delete-request
+ * @access  Private
+ */
+const sendDeleteOTP = async (req, res) => {
+  try {
+    const hod = await HOD.findById(req.user.id);
+    if (!hod) return errorResponse(res, 'HOD not found', 404);
+
+    const { otp, expiresAt } = generateOTP();
+    hod.deleteOtp = { code: otp, expiresAt };
+    await hod.save();
+
+    await sendOTPEmail(hod.email, otp, hod.collegeName);
+
+    return successResponse(res, {
+      message: 'OTP sent to your registered email to confirm deletion',
+      email: hod.email
+    });
+  } catch (error) {
+    console.error('Send Delete OTP Error:', error);
+    return errorResponse(res, 'Failed to send delete OTP', 500);
+  }
+};
+
+/**
+ * @desc    Confirm HOD deletion with OTP
+ * @route   POST /api/hods/confirm-delete
+ * @access  Private
+ */
+const confirmDeleteHOD = async (req, res) => {
+  try {
+    const { otp } = req.body;
+    const hodId = req.user.id;
+
+    const hod = await HOD.findById(hodId);
+    if (!hod) return errorResponse(res, 'HOD not found', 404);
+
+    if (!hod.deleteOtp) return errorResponse(res, 'No delete request found', 400);
+
+    const status = verifyOTP(otp, hod.deleteOtp.code, hod.deleteOtp.expiresAt);
+    if (status === 'invalid') {
+      return errorResponse(res, 'Invalid OTP', 400);
+    }
+    if (status === 'expired') {
+      // cleanup and inform user
+      hod.deleteOtp = undefined;
+      await hod.save();
+      return errorResponse(res, 'Delete OTP expired. Please request deletion again.', 400);
+    }
+
+    // valid -> delete HOD. Cascade is handled by model middleware (findOneAndDelete)
+    await HOD.findByIdAndDelete(hodId);
+
+    return successResponse(res, {
+      message: 'HOD and all related data deleted successfully'
+    });
+  } catch (error) {
+    console.error('Confirm Delete Error:', error);
+    return errorResponse(res, 'Server error during delete confirmation', 500);
   }
 };
 
@@ -225,5 +409,9 @@ module.exports = {
   verifyOTPHandler,
   resendOTP,
   loginHOD,
-  getHODProfile
+  getHODProfile,
+  updateHOD,
+  verifyUpdateOTP,
+  sendDeleteOTP,
+  confirmDeleteHOD
 };

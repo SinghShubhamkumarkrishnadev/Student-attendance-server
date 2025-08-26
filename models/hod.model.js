@@ -37,18 +37,23 @@ const hodSchema = new mongoose.Schema({
   otp: {
     code: String,
     expiresAt: Date
+  },
+  deleteOtp: {
+    code: String,
+    expiresAt: Date
+  },
+  pendingUpdates: {
+    email: String,
+    password: String
   }
 }, { timestamps: true });
 
-// Hash password before saving
-hodSchema.pre('save', async function(next) {
-  // Only hash the password if it's modified (or new)
+// ================== PASSWORD HASH ==================
+hodSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
-  
+
   try {
-    // Generate salt
     const salt = await bcrypt.genSalt(10);
-    // Hash password
     this.password = await bcrypt.hash(this.password, salt);
     next();
   } catch (error) {
@@ -56,11 +61,47 @@ hodSchema.pre('save', async function(next) {
   }
 });
 
-// Method to compare passwords
-hodSchema.methods.comparePassword = async function(candidatePassword) {
+// ================== CASCADE DELETE ==================
+async function cascadeDelete(hodId) {
+  const Professor = mongoose.model("Professor");
+  const Student = mongoose.model("Student");
+  const ClassModel = mongoose.model("Class");
+
+  const Attendance = mongoose.models.Attendance || null;
+  const Subject = mongoose.models.Subject || null;
+
+  await Promise.all([
+    Professor.deleteMany({ hod: hodId }),
+    Student.deleteMany({ hod: hodId }),
+    ClassModel.deleteMany({ hod: hodId }),
+    Attendance ? Attendance.deleteMany({ hod: hodId }) : Promise.resolve(),
+    Subject ? Subject.deleteMany({ hod: hodId }) : Promise.resolve(),
+  ]);
+}
+
+hodSchema.pre("findOneAndDelete", async function (next) {
+  try {
+    const hodId = this.getQuery()["_id"];
+    await cascadeDelete(hodId);
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
+
+hodSchema.pre("remove", async function (next) {
+  try {
+    await cascadeDelete(this._id);
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ================== METHODS ==================
+hodSchema.methods.comparePassword = async function (candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
 const HOD = mongoose.model('HOD', hodSchema);
-
 module.exports = HOD;

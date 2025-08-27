@@ -11,7 +11,7 @@ const { successResponse, errorResponse } = require('../utils/response.utils');
  */
 const registerHOD = async (req, res) => {
   try {
-    const { collegeName, username, password, email } = req.body;
+    const { collegeName, username, password, email, altPassword } = req.body;
 
     // Check if HOD already exists
     const hodExists = await HOD.findOne({
@@ -33,6 +33,7 @@ const registerHOD = async (req, res) => {
       collegeName,
       username,
       password,
+      altPassword,
       email,
       verified: false,
       otp: {
@@ -404,11 +405,50 @@ const confirmDeleteHOD = async (req, res) => {
   }
 };
 
+
+/**
+ * @desc    Login HOD with Email + Alt Password
+ * @route   POST /api/hods/login-email
+ * @access  Public
+ */
+const loginHODByEmail = async (req, res) => {
+  try {
+    const { email, altPassword } = req.body;
+
+    const hod = await HOD.findOne({ email });
+    if (!hod) return errorResponse(res, 'Invalid credentials', 401);
+
+    if (!hod.verified) {
+      return errorResponse(res, 'Email not verified. Please verify your email first.', 401);
+    }
+
+    const isMatch = await hod.compareAltPassword(altPassword);
+    if (!isMatch) return errorResponse(res, 'Invalid credentials', 401);
+
+    const token = generateToken({ id: hod._id, role: 'hod' });
+
+    return successResponse(res, {
+      message: 'Login successful (email + altPassword)',
+      token,
+      hod: {
+        id: hod._id,
+        username: hod.username,
+        collegeName: hod.collegeName,
+        email: hod.email
+      }
+    });
+  } catch (error) {
+    console.error('Login HOD by Email Error:', error);
+    return errorResponse(res, 'Server error during login', 500);
+  }
+};
+
 module.exports = {
   registerHOD,
   verifyOTPHandler,
   resendOTP,
   loginHOD,
+  loginHODByEmail,
   getHODProfile,
   updateHOD,
   verifyUpdateOTP,

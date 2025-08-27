@@ -10,7 +10,6 @@ const professorSchema = new mongoose.Schema({
   username: {
     type: String,
     required: [true, 'Username is required'],
-    unique: true,
     trim: true,
     minlength: [3, 'Username must be at least 3 characters']
   },
@@ -30,15 +29,15 @@ const professorSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
+// ✅ Compound unique index: username must be unique per HOD
+professorSchema.index({ username: 1, createdBy: 1 }, { unique: true });
+
 // Hash password before saving
 professorSchema.pre('save', async function(next) {
-  // Only hash the password if it's modified (or new)
   if (!this.isModified('password')) return next();
   
   try {
-    // Generate salt
     const salt = await bcrypt.genSalt(10);
-    // Hash password
     this.password = await bcrypt.hash(this.password, salt);
     next();
   } catch (error) {

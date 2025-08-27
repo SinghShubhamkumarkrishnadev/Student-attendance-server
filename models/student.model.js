@@ -4,7 +4,6 @@ const studentSchema = new mongoose.Schema({
   enrollmentNumber: {
     type: String,
     required: [true, 'Enrollment number is required'],
-    unique: true,
     trim: true
   },
   name: {
@@ -34,8 +33,10 @@ const studentSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-// Index for faster queries
-studentSchema.index({ enrollmentNumber: 1 });
+// ✅ Compound unique index: enrollmentNumber must be unique per HOD
+studentSchema.index({ enrollmentNumber: 1, createdBy: 1 }, { unique: true });
+
+// ✅ Useful indexes for queries
 studentSchema.index({ classId: 1 });
 
 const Student = mongoose.model('Student', studentSchema);

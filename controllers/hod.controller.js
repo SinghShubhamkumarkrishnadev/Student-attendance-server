@@ -220,9 +220,10 @@ const getHODProfile = async (req, res) => {
  * @route   PUT /api/hods/update
  * @access  Private
  */
+// ================== Update HOD Profile ==================
 const updateHOD = async (req, res) => {
   try {
-    const { collegeName, username, email, password } = req.body;
+    const { collegeName, username, email, password, altPassword } = req.body;
     const hod = await HOD.findById(req.user.id);
 
     if (!hod) return errorResponse(res, 'HOD not found', 404);
@@ -239,8 +240,8 @@ const updateHOD = async (req, res) => {
     // College name update
     if (collegeName) hod.collegeName = collegeName;
 
-    // Email/Password update -> needs OTP
-    if ((email && email !== hod.email) || password) {
+    // Email/Password/AltPassword update -> needs OTP
+    if ((email && email !== hod.email) || password || altPassword) {
       const { otp, expiresAt } = generateOTP();
       hod.otp = { code: otp, expiresAt };
       hod.pendingUpdates = {};
@@ -255,6 +256,10 @@ const updateHOD = async (req, res) => {
 
       if (password) {
         hod.pendingUpdates.password = password;
+      }
+
+      if (altPassword) {
+        hod.pendingUpdates.altPassword = altPassword;
       }
 
       otpTriggered = true;
@@ -285,6 +290,7 @@ const updateHOD = async (req, res) => {
     return errorResponse(res, 'Server error while updating profile', 500);
   }
 };
+
 
 /**
  * @desc    Verify OTP for email/password update
@@ -318,6 +324,10 @@ const verifyUpdateOTP = async (req, res) => {
 
     if (hod.pendingUpdates?.password) {
       hod.password = hod.pendingUpdates.password;
+    }
+
+    if (hod.pendingUpdates?.altPassword) {
+      hod.altPassword = hod.pendingUpdates.altPassword;
     }
 
     hod.otp = undefined;

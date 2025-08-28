@@ -23,6 +23,12 @@ router.use(authenticate, authorizeHOD);
 // Bulk upload students from Excel
 router.post('/bulk-upload', handleExcelUpload, studentController.bulkUploadStudents);
 
+// Bulk delete students
+router.delete('/', studentController.deleteStudentsBulk);
+
+// Add single student
+router.post('/', studentController.addStudent);
+
 // Get student by ID
 router.get('/:id', studentController.getStudentById);
 
@@ -31,11 +37,5 @@ router.put('/:id', studentController.updateStudent);
 
 // Delete student
 router.delete('/:id', studentController.deleteStudent);
-
-// Bulk delete students
-router.delete('/', studentController.deleteStudentsBulk);
-
-// Add single student
-router.post('/', studentController.addStudent);
 
 module.exports = router;

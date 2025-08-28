@@ -17,6 +17,14 @@ router.post('/login',
   validateLogin, 
   professorController.loginProfessor);
 
+  // Professor routes
+router.get(
+  '/classes',
+  authenticate,
+  authorizeProfessor,
+  professorController.getProfessorClasses
+);
+
 // HOD routes for managing professors
 // NOTE: put bulk-upload and bulk before parameterized routes
 router.post(
@@ -70,12 +78,5 @@ router.delete(
   professorController.deleteProfessor
 );
 
-// Professor routes
-router.get(
-  '/classes',
-  authenticate,
-  authorizeProfessor,
-  professorController.getProfessorClasses
-);
-
 module.exports = router;
+

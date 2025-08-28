@@ -5,6 +5,9 @@ const { generateToken } = require('../config/jwt.config');
 const { successResponse, errorResponse } = require('../utils/response.utils');
 const XLSX = require('xlsx');
 const fs = require('fs');
+const HOD = require('../models/hod.model');
+const jwt = require('jsonwebtoken')
+const bcrypt = require('bcrypt');
 
 /**
  * Parse Excel file for professors
@@ -435,46 +438,62 @@ const deleteProfessor = async (req, res) => {
 };
 
 /**
- * @desc    Professor login
+ * @desc    Professor login (requires valid HOD token)
  * @route   POST /api/professors/login
- * @access  Public
+ * @access  Protected (HOD token required)
  */
 const loginProfessor = async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    // Find professor by username
-    const professor = await Professor.findOne({ username });
+    // Get HOD token from header (Authorization: Bearer <token>)
+    const authHeader = req.headers['authorization'];
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return errorResponse(res, 'HOD token required in Authorization header', 401);
+    }
+
+    const hodToken = authHeader.split(' ')[1];
+
+    // Verify HOD token
+    let decoded;
+    try {
+      decoded = jwt.verify(hodToken, process.env.JWT_SECRET);
+    } catch (err) {
+      return errorResponse(res, 'Invalid or expired HOD token', 401);
+    }
+
+    if (decoded.role !== 'hod') {
+      return errorResponse(res, 'Only HOD token can be used for professor login', 403);
+    }
+
+    const hodId = decoded.id;
+
+    // Find professor created by this HOD
+    const professor = await Professor.findOne({ username, createdBy: hodId });
     if (!professor) {
-      return errorResponse(res, 'Invalid credentials', 401);
+      return errorResponse(res, 'Professor not found or not linked to this HOD', 404);
     }
 
-    // Check password
-    const isMatch = await professor.comparePassword(password);
+    // Validate password
+    const isMatch = await bcrypt.compare(password, professor.password);
     if (!isMatch) {
-      return errorResponse(res, 'Invalid credentials', 401);
+      return errorResponse(res, 'Invalid credentials', 400);
     }
 
-    // Generate token
-    const token = generateToken({
-      id: professor._id,
-      role: 'professor'
-    });
+    // Generate professor token
+    const token = generateToken(professor, 'professor', hodId);
 
-    return successResponse(res, {
-      message: 'Login successful',
-      token,
-      professor: {
-        id: professor._id,
-        name: professor.name,
-        username: professor.username
-      }
-    });
-
+    return successResponse(res, { token }, 'Professor logged in successfully');
   } catch (error) {
-    return errorResponse(res, 'Server error during login', 500);
+    console.error('loginProfessor error:', error);
+    return errorResponse(res, 'Professor login failed', 500);
   }
 };
+
+module.exports = {
+  loginProfessor,
+};
+
 
 /**
  * @desc    Get professor's assigned classes

@@ -4,18 +4,24 @@ const studentController = require('../controllers/student.controller');
 const { authenticate, authorizeHOD } = require('../middleware/auth.middleware');
 const { handleExcelUpload } = require('../middleware/upload.middleware');
 
-// All routes require HOD authentication
+/**
+ * Custom middleware: Allow either HOD or Professor to access
+ */
+const allowHODorProfessor = (req, res, next) => {
+  if (req.user?.role === 'hod' || req.user?.role === 'professor') {
+    return next();
+  }
+  return res.status(403).json({ message: 'Forbidden: Only HOD or Professor allowed' });
+};
+
+// ✅ Shared access: HOD + Professor can fetch students
+router.get('/', authenticate, allowHODorProfessor, studentController.getStudents);
+
+// ✅ All routes below require HOD only
 router.use(authenticate, authorizeHOD);
 
 // Bulk upload students from Excel
-router.post(
-  '/bulk-upload', 
-  handleExcelUpload, 
-  studentController.bulkUploadStudents
-);
-
-// Get all students with optional filters
-router.get('/', studentController.getStudents);
+router.post('/bulk-upload', handleExcelUpload, studentController.bulkUploadStudents);
 
 // Get student by ID
 router.get('/:id', studentController.getStudentById);
@@ -30,6 +36,6 @@ router.delete('/:id', studentController.deleteStudent);
 router.delete('/', studentController.deleteStudentsBulk);
 
 // Add single student
-router.post("/", studentController.addStudent);
+router.post('/', studentController.addStudent);
 
 module.exports = router;

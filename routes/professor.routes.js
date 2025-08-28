@@ -13,7 +13,9 @@ const {
 const { handleExcelUpload } = require('../middleware/upload.middleware'); // MUST exist (same as classes)
 
 // Public routes
-router.post('/login', validateLogin, professorController.loginProfessor);
+router.post('/login', 
+  validateLogin, 
+  professorController.loginProfessor);
 
 // HOD routes for managing professors
 // NOTE: put bulk-upload and bulk before parameterized routes

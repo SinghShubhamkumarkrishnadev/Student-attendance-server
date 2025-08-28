@@ -69,6 +69,25 @@ const authorizeProfessor = async (req, res, next) => {
       return errorResponse(res, 'Professor not found', 404);
     }
 
+    // ✅ Extra safety: ensure professor is linked to a valid HOD
+    if (!req.user.hodId) {
+      return errorResponse(res, 'Professor must be linked to a HOD', 403);
+    }
+
+    // Extra validation
+    if (String(professor.createdBy) !== String(req.user.hodId)) {
+      return errorResponse(res, 'Professor not linked to this HOD', 403);
+    }
+
+
+    const hod = await HOD.findById(req.user.hodId);
+    if (!hod) {
+      return errorResponse(res, 'Linked HOD not found', 404);
+    }
+
+    req.professor = professor; // attach professor to req for convenience
+    req.hod = hod; // attach hod if needed later
+
     next();
   } catch (error) {
     return errorResponse(res, 'Authorization failed', 500);

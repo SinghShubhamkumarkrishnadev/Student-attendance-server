@@ -96,10 +96,7 @@ const verifyOTPHandler = async (req, res) => {
     hod.otp = undefined;
     await hod.save();
 
-    const token = generateToken({
-      id: hod._id,
-      role: 'hod'
-    });
+    const token = generateToken(hod, 'hod');
 
     return successResponse(res, {
       message: 'Email verified successfully',
@@ -177,10 +174,7 @@ const loginHOD = async (req, res) => {
     const isMatch = await hod.comparePassword(password);
     if (!isMatch) return errorResponse(res, 'Invalid credentials', 401);
 
-    const token = generateToken({
-      id: hod._id,
-      role: 'hod'
-    });
+    const token = generateToken(hod, 'hod');
 
     return successResponse(res, {
       message: 'Login successful',
@@ -435,7 +429,7 @@ const loginHODByEmail = async (req, res) => {
     const isMatch = await hod.compareAltPassword(altPassword);
     if (!isMatch) return errorResponse(res, 'Invalid credentials', 401);
 
-    const token = generateToken({ id: hod._id, role: 'hod' });
+    const token = generateToken(hod, 'hod');
 
     return successResponse(res, {
       message: 'Login successful (email + altPassword)',

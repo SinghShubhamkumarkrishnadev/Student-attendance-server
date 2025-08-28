@@ -2,10 +2,21 @@ const jwt = require('jsonwebtoken');
 
 /**
  * Generate JWT token
- * @param {Object} payload - Data to be included in token
+ * @param {Object} user - HOD or Professor document
+ * @param {String} role - 'hod' or 'professor'
+ * @param {String} [hodId] - required for professor tokens
  * @returns {String} JWT token
  */
-const generateToken = (payload) => {
+const generateToken = (user, role, hodId = null) => {
+  const payload = {
+    id: user._id,
+    role,
+  };
+
+  if (role === 'professor' && hodId) {
+    payload.hodId = hodId; // ✅ embed parent HOD reference
+  }
+
   return jwt.sign(
     payload,
     process.env.JWT_SECRET,

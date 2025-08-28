@@ -50,6 +50,12 @@ professorSchema.methods.comparePassword = async function(candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
+// ================== NEW METHOD ==================
+// Used in login flow: check professor belongs to a HOD
+professorSchema.statics.findByUsernameAndHod = async function(username, hodId) {
+  return this.findOne({ username, createdBy: hodId });
+};
+
 const Professor = mongoose.model('Professor', professorSchema);
 
 module.exports = Professor;

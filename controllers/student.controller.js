@@ -36,18 +36,19 @@ const bulkUploadStudents = async (req, res) => {
       return errorResponse(res, 'Some student records are missing required fields', 400);
     }
 
-    // Check for duplicate enrollment numbers in the database
+    // ✅ Check for duplicate enrollment numbers per HOD
     const existingEnrollments = await Student.find({
-      enrollmentNumber: { $in: students.map(s => s.enrollmentNumber) }
+      enrollmentNumber: { $in: students.map(s => s.enrollmentNumber) },
+      createdBy: hodId
     }).select('enrollmentNumber');
 
     const existingEnrollmentSet = new Set(existingEnrollments.map(s => s.enrollmentNumber));
 
-    // Filter out students that already exist
+    // Filter out students that already exist for this HOD
     const newStudents = students.filter(s => !existingEnrollmentSet.has(s.enrollmentNumber));
 
     if (newStudents.length === 0) {
-      return errorResponse(res, 'All students in the file already exist in the database', 400);
+      return errorResponse(res, 'All students in the file already exist in your account', 400);
     }
 
     // Add createdBy field to each student
@@ -147,10 +148,6 @@ const getStudentById = async (req, res) => {
  * @desc    Update student
  * @route   PUT /api/students/:id
  * @access  Private (HOD only)
- *
- * Note: `classId` in request body can be either:
- *  - a Class._id (ObjectId string), or
- *  - a human class code (e.g., "CS101") — this will be resolved to Class._id
  */
 const updateStudent = async (req, res) => {
   try {
@@ -168,11 +165,11 @@ const updateStudent = async (req, res) => {
       return errorResponse(res, 'Student not found', 404);
     }
 
-    // ⚠️ If enrollmentNumber is being updated, check uniqueness
+    // ✅ If enrollmentNumber is being updated, check uniqueness per HOD
     if (enrollmentNumber && enrollmentNumber !== student.enrollmentNumber) {
-      const existing = await Student.findOne({ enrollmentNumber });
+      const existing = await Student.findOne({ enrollmentNumber, createdBy: hodId });
       if (existing) {
-        return errorResponse(res, 'Student with this enrollment number already exists', 400);
+        return errorResponse(res, 'Student with this enrollment number already exists in your account', 400);
       }
       student.enrollmentNumber = enrollmentNumber;
     }
@@ -218,7 +215,6 @@ const updateStudent = async (req, res) => {
     return errorResponse(res, 'Server error while updating student', 500);
   }
 };
-
 
 /**
  * @desc    Delete student
@@ -325,10 +321,10 @@ const addStudent = async (req, res) => {
       return errorResponse(res, "Enrollment number, name, and semester are required", 400);
     }
 
-    // Check for duplicate enrollmentNumber
-    const existing = await Student.findOne({ enrollmentNumber });
+    // ✅ Check for duplicate enrollmentNumber per HOD
+    const existing = await Student.findOne({ enrollmentNumber, createdBy: hodId });
     if (existing) {
-      return errorResponse(res, "Student with this enrollment number already exists", 400);
+      return errorResponse(res, "Student with this enrollment number already exists in your account", 400);
     }
 
     let resolvedClassId = null;

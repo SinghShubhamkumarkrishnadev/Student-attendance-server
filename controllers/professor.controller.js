@@ -494,7 +494,6 @@ module.exports = {
   loginProfessor,
 };
 
-
 /**
  * @desc    Get professor's assigned classes
  * @route   GET /api/professors/classes
@@ -515,9 +514,10 @@ const getProfessorClasses = async (req, res) => {
       professors: professorId
     }).populate('students', 'enrollmentNumber name');
 
-    // Format response
+    // Format response and include MongoDB ObjectId
     const formattedClasses = classes.map(cls => ({
-      classId: cls.classId,
+      _id: cls._id,              // <-- include ObjectId
+      classId: cls.classId,       // numeric ID if you still need it
       className: cls.className,
       division: cls.division,
       students: cls.students.map(student => ({
@@ -530,6 +530,7 @@ const getProfessorClasses = async (req, res) => {
     return successResponse(res, { classes: formattedClasses });
 
   } catch (error) {
+    console.error('getProfessorClasses error:', error);
     return errorResponse(res, 'Server error while fetching classes', 500);
   }
 };

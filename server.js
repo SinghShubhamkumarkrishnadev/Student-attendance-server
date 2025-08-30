@@ -1,3 +1,4 @@
+// server.js
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -15,6 +16,7 @@ const hodRoutes = require('./routes/hod.routes');
 const professorRoutes = require('./routes/professor.routes');
 const studentRoutes = require('./routes/student.routes');
 const classRoutes = require('./routes/class.routes');
+const attendanceRoutes = require('./routes/attendance.routes');
 
 // Database connection
 const connectDB = require('./config/db.config');
@@ -31,15 +33,16 @@ app.use(express.urlencoded({ extended: true }));
 // Static folder for uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Routes
+// API Routes
 app.use('/api/hods', hodRoutes);
 app.use('/api/professors', professorRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/classes', classRoutes);
+app.use('/api/attendance', attendanceRoutes);
 
-// Basic route for testing
+// Root route
 app.get('/', (req, res) => {
-  res.send('Student Attendance System API is running');
+  res.send('✅ Student Attendance System API is running');
 });
 
 // Error handling middleware
@@ -48,12 +51,11 @@ app.use(errorMiddleware);
 // Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+  console.log(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
 });
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err) => {
-  console.log(`Error: ${err.message}`);
-  // Close server & exit process
+  console.error(`Unhandled Rejection: ${err.message}`);
   process.exit(1);
 });

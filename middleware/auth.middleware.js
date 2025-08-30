@@ -94,8 +94,45 @@ const authorizeProfessor = async (req, res, next) => {
   }
 };
 
+const authorizeProfessorOrHod = async (req, res, next) => {
+  try {
+    if (!req.user) {
+      return errorResponse(res, 'Authentication required', 401);
+    }
+
+    if (req.user.role === 'professor') {
+      // same checks you already do for professors
+      const professor = await Professor.findById(req.user.id);
+      if (!professor) return errorResponse(res, 'Professor not found', 404);
+      if (!req.user.hodId) return errorResponse(res, 'Professor must be linked to a HOD', 403);
+      if (String(professor.createdBy) !== String(req.user.hodId)) {
+        return errorResponse(res, 'Professor not linked to this HOD', 403);
+      }
+      const hod = await HOD.findById(req.user.hodId);
+      if (!hod) return errorResponse(res, 'Linked HOD not found', 404);
+      req.professor = professor;
+      req.hod = hod;
+      return next();
+    }
+
+    if (req.user.role === 'hod') {
+      const hod = await HOD.findById(req.user.id);
+      if (!hod) return errorResponse(res, 'HOD not found', 404);
+      if (!hod.verified) return errorResponse(res, 'Email verification required', 403);
+      req.hod = hod;
+      return next();
+    }
+
+    return errorResponse(res, 'Access denied. Professor or HOD authorization required', 403);
+  } catch (error) {
+    return errorResponse(res, 'Authorization failed', 500);
+  }
+};
+
+
 module.exports = {
   authenticate,
   authorizeHOD,
-  authorizeProfessor
+  authorizeProfessor,
+  authorizeProfessorOrHod
 };

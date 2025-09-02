@@ -5,37 +5,38 @@ const professorSchema = new mongoose.Schema({
   name: {
     type: String,
     required: [true, 'Professor name is required'],
-    trim: true
+    trim: true,
   },
   username: {
     type: String,
     required: [true, 'Username is required'],
     trim: true,
-    minlength: [3, 'Username must be at least 3 characters']
+    lowercase: true, // ✅ always store in lowercase
+    minlength: [3, 'Username must be at least 3 characters'],
   },
   password: {
     type: String,
     required: [true, 'Password is required'],
-    minlength: [6, 'Password must be at least 6 characters']
+    minlength: [6, 'Password must be at least 6 characters'],
   },
   classes: [{
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Class'
+    ref: 'Class',
   }],
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'HOD',
-    required: true
-  }
+    required: true,
+  },
 }, { timestamps: true });
 
-// ✅ Compound unique index: username must be unique per HOD
+// ✅ Ensure username is unique per HOD
 professorSchema.index({ username: 1, createdBy: 1 }, { unique: true });
 
-// Hash password before saving
-professorSchema.pre('save', async function(next) {
+// 🔑 Hash password before saving
+professorSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
-  
+
   try {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
@@ -45,15 +46,14 @@ professorSchema.pre('save', async function(next) {
   }
 });
 
-// Method to compare passwords
-professorSchema.methods.comparePassword = async function(candidatePassword) {
-  return await bcrypt.compare(candidatePassword, this.password);
+// 🔍 Compare password
+professorSchema.methods.comparePassword = async function (candidatePassword) {
+  return bcrypt.compare(candidatePassword, this.password);
 };
 
-// ================== NEW METHOD ==================
-// Used in login flow: check professor belongs to a HOD
-professorSchema.statics.findByUsernameAndHod = async function(username, hodId) {
-  return this.findOne({ username, createdBy: hodId });
+// 🔍 Find professor by username + HOD
+professorSchema.statics.findByUsernameAndHod = function (username, hodId) {
+  return this.findOne({ username: username.toLowerCase(), createdBy: hodId });
 };
 
 const Professor = mongoose.model('Professor', professorSchema);

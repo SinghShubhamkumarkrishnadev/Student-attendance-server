@@ -55,7 +55,6 @@ const parseProfessorExcel = async (filePath) => {
  * @route   POST /api/professors/bulk-upload
  * @access  Private (HOD only)
  */
-// Replace your existing bulkUploadProfessors with this improved version
 const bulkUploadProfessors = async (req, res) => {
   let filePath;
   try {
@@ -273,7 +272,10 @@ const addProfessor = async (req, res) => {
     const hodId = req.user.id;
 
     // Check if professor with username already exists
-    const professorExists = await Professor.findOne({ username });
+    const professorExists = await Professor.findOne({
+      username,
+      createdBy: hodId,
+    });
     if (professorExists) {
       return errorResponse(res, 'Username already taken', 400);
     }
@@ -371,15 +373,19 @@ const updateProfessor = async (req, res) => {
 
     // Check if username is being changed and already exists
     if (username && username !== professor.username) {
-      const usernameExists = await Professor.findOne({ username });
+      const usernameExists = await Professor.findOne({
+        username,
+        createdBy: hodId,
+        _id: { $ne: professorId },
+      });
       if (usernameExists) {
         return errorResponse(res, 'Username already taken', 400);
       }
+      professor.username = username;
     }
 
     // Update professor fields
     if (name) professor.name = name;
-    if (username) professor.username = username;
     if (password) professor.password = password;
 
     // Save updated professor
@@ -488,10 +494,6 @@ const loginProfessor = async (req, res) => {
     console.error('loginProfessor error:', error);
     return errorResponse(res, 'Professor login failed', 500);
   }
-};
-
-module.exports = {
-  loginProfessor,
 };
 
 /**

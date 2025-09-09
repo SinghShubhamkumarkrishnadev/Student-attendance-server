@@ -79,17 +79,34 @@ async function cascadeDelete(hodId) {
   const Student = mongoose.model("Student");
   const ClassModel = mongoose.model("Class");
   const Counter = mongoose.model("Counter");
+  const Attendance = mongoose.model("Attendance");
 
-  const Attendance = mongoose.models.Attendance || null;
-  const Subject = mongoose.models.Subject || null;
+  // find all related entities first
+  const [professors, students, classes] = await Promise.all([
+    Professor.find({ createdBy: hodId }).select("_id"),
+    Student.find({ createdBy: hodId }).select("_id"),
+    ClassModel.find({ createdBy: hodId }).select("_id"),
+  ]);
+
+  const professorIds = professors.map(p => p._id);
+  const studentIds = students.map(s => s._id);
+  const classIds = classes.map(c => c._id);
 
   await Promise.all([
-    Professor.deleteMany({ createdBy: hodId }),
-    Student.deleteMany({ createdBy: hodId }),
-    ClassModel.deleteMany({ createdBy: hodId }),
+    // delete main entities
+    Professor.deleteMany({ _id: { $in: professorIds } }),
+    Student.deleteMany({ _id: { $in: studentIds } }),
+    ClassModel.deleteMany({ _id: { $in: classIds } }),
     Counter.deleteOne({ hod: hodId }),
-    Attendance ? Attendance.deleteMany({ createdBy: hodId }) : Promise.resolve(),
-    Subject ? Subject.deleteMany({ createdBy: hodId }) : Promise.resolve(),
+
+    // delete attendance linked to any of them
+    Attendance.deleteMany({
+      $or: [
+        { studentId: { $in: studentIds } },
+        { classId: { $in: classIds } },
+        { markedBy: { $in: professorIds } }
+      ]
+    })
   ]);
 }
 

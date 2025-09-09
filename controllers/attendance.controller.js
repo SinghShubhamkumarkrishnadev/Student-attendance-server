@@ -198,9 +198,24 @@ exports.getClassAttendance = async (req, res, next) => {
 exports.getStudentAttendance = async (req, res, next) => {
   try {
     const { studentId } = req.params;
+    let { month, year } = req.query;
+
     if (!studentId) return errorResponse(res, 'studentId is required', 400);
 
-    const records = await Attendance.find({ studentId })
+    const filter = { studentId };
+
+    if (month && year) {
+      month = Number(month);
+      year = Number(year);
+      if (!Number.isInteger(month) || !Number.isInteger(year) || month < 1 || month > 12) {
+        return errorResponse(res, 'Invalid month/year', 400);
+      }
+      const start = new Date(year, month - 1, 1).getTime();
+      const end = new Date(year, month, 0, 23, 59, 59, 999).getTime();
+      filter.dateMs = { $gte: start, $lte: end };
+    }
+
+    const records = await Attendance.find(filter)
       .populate('classId', 'className division')
       .populate('markedBy', 'name username')
       .lean();
@@ -222,6 +237,7 @@ exports.getStudentAttendance = async (req, res, next) => {
     next(err);
   }
 };
+
 
 // ========== MONTHLY SUMMARY ==========
 exports.getMonthlySummary = async (req, res, next) => {
@@ -311,8 +327,22 @@ exports.getMonthlySummary = async (req, res, next) => {
 exports.getStudentAttendanceForSelf = async (req, res, next) => {
   try {
     const studentId = req.student._id;
-    
-    const records = await Attendance.find({ studentId })
+    let { month, year } = req.query;
+
+    const filter = { studentId };
+
+    if (month && year) {
+      month = Number(month);
+      year = Number(year);
+      if (!Number.isInteger(month) || !Number.isInteger(year) || month < 1 || month > 12) {
+        return errorResponse(res, 'Invalid month/year', 400);
+      }
+      const start = new Date(year, month - 1, 1).getTime();
+      const end = new Date(year, month, 0, 23, 59, 59, 999).getTime();
+      filter.dateMs = { $gte: start, $lte: end };
+    }
+
+    const records = await Attendance.find(filter)
       .populate('classId', 'className division')
       .populate('markedBy', 'name username')
       .lean();
@@ -334,3 +364,4 @@ exports.getStudentAttendanceForSelf = async (req, res, next) => {
     next(err);
   }
 };
+

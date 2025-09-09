@@ -305,3 +305,32 @@ exports.getMonthlySummary = async (req, res, next) => {
     next(err);
   }
 };
+
+
+
+exports.getStudentAttendanceForSelf = async (req, res, next) => {
+  try {
+    const studentId = req.student._id;
+    
+    const records = await Attendance.find({ studentId })
+      .populate('classId', 'className division')
+      .populate('markedBy', 'name username')
+      .lean();
+
+    const cleaned = records.map((r) => ({
+      id: String(r._id),
+      date: new Date(r.dateMs).toISOString(),
+      slotNumber: r.slotNumber,
+      isPresent: !!r.isPresent,
+      className: r.classId?.className || '',
+      division: r.classId?.division || '',
+      markedBy: r.markedBy?.name || r.markedBy?.username || '',
+      createdAt: r.createdAt ? new Date(r.createdAt).toISOString() : undefined,
+      updatedAt: r.updatedAt ? new Date(r.updatedAt).toISOString() : undefined,
+    }));
+
+    return successResponse(res, { records: cleaned });
+  } catch (err) {
+    next(err);
+  }
+};

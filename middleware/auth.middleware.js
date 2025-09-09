@@ -1,6 +1,7 @@
 const { verifyToken } = require('../config/jwt.config');
 const HOD = require('../models/hod.model');
 const Professor = require('../models/professor.model');
+const Student = require('../models/student.model');
 const { errorResponse } = require('../utils/response.utils');
 
 const authenticate = async (req, res, next) => {
@@ -129,10 +130,48 @@ const authorizeProfessorOrHod = async (req, res, next) => {
   }
 };
 
+const authorizeStudent = async (req, res, next) => {
+  try {
+    if (!req.user) {
+      return errorResponse(res, 'Authentication required', 401);
+    }
+
+    if (req.user.role !== 'student') {
+      return errorResponse(res, 'Access denied. Student authorization required', 403);
+    }
+
+    const student = await Student.findById(req.user.id);
+    if (!student) {
+      return errorResponse(res, 'Student not found', 404);
+    }
+
+    if (!req.user.hodId) {
+      return errorResponse(res, 'Student must be linked to a HOD', 403);
+    }
+
+    if (String(student.createdBy) !== String(req.user.hodId)) {
+      return errorResponse(res, 'Student not linked to this HOD', 403);
+    }
+
+    const hod = await HOD.findById(req.user.hodId);
+    if (!hod) {
+      return errorResponse(res, 'Linked HOD not found', 404);
+    }
+
+    req.student = student;
+    req.hod = hod;
+
+    next();
+  } catch (error) {
+    return errorResponse(res, 'Authorization failed', 500);
+  }
+};
+
 
 module.exports = {
   authenticate,
   authorizeHOD,
   authorizeProfessor,
-  authorizeProfessorOrHod
+  authorizeProfessorOrHod,
+  authorizeStudent
 };

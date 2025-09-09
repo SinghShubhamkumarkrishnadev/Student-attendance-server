@@ -17,6 +17,10 @@ const generateToken = (user, role, hodId = null) => {
     payload.hodId = hodId; // ✅ embed parent HOD reference
   }
 
+   if (role === 'student' && hodId) {
+    payload.hodId = hodId;
+  }
+  
   return jwt.sign(
     payload,
     process.env.JWT_SECRET,

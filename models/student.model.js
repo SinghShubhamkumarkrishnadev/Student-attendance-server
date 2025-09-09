@@ -20,12 +20,11 @@ const studentSchema = new mongoose.Schema({
     type: String,
     trim: true,
     default: null
-  },  
-  classId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Class',
-    default: null
   },
+  classIds: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Class'
+  }],
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'HOD',
@@ -37,7 +36,7 @@ const studentSchema = new mongoose.Schema({
 studentSchema.index({ enrollmentNumber: 1, createdBy: 1 }, { unique: true });
 
 // ✅ Useful indexes for queries
-studentSchema.index({ classId: 1 });
+studentSchema.index({ classIds: 1 });
 
 const Student = mongoose.model('Student', studentSchema);
 

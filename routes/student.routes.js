@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const studentController = require('../controllers/student.controller');
-const { authenticate, authorizeHOD } = require('../middleware/auth.middleware');
+const { authenticate, authorizeHOD, authorizeStudent  } = require('../middleware/auth.middleware');
 const { handleExcelUpload } = require('../middleware/upload.middleware');
+const { validateStudentLogin } = require('../middleware/validation.middleware');
 
 /**
  * Custom middleware: Allow either HOD or Professor to access
@@ -13,6 +14,10 @@ const allowHODorProfessor = (req, res, next) => {
   }
   return res.status(403).json({ message: 'Forbidden: Only HOD or Professor allowed' });
 };
+
+// Student login with HOD authorization
+router.post('/login', authenticate, authorizeHOD, validateStudentLogin, studentController.loginStudent);
+
 
 // ✅ Shared access: HOD + Professor can fetch students
 router.get('/', authenticate, allowHODorProfessor, studentController.getStudents);

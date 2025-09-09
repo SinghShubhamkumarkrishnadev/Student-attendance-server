@@ -188,6 +188,17 @@ const validateHODUpdate = (req, res, next) => {
   next();
 };
 
+
+/**
+ * Validate Student for login
+ */
+const validateStudentLogin = (req, res, next) => {
+  const { enrollmentNumber } = req.body;
+  if (!enrollmentNumber) {
+    return errorResponse(res, 'Enrollment number is required', 400);
+  }
+  next();
+};
 module.exports = {
   validateHODRegistration,
   validateOTP,
@@ -195,5 +206,6 @@ module.exports = {
   validateLogin,
   validateEmailLogin, 
   validateProfessor,
-  validateHODUpdate
+  validateHODUpdate,
+  validateStudentLogin
 };

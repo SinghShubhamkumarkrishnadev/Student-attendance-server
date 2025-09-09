@@ -261,8 +261,8 @@ const deleteClass = async (req, res) => {
 
     // Update all students to remove class assignment
     await Student.updateMany(
-      { classId: classData._id },
-      { $set: { classId: null } }
+      { classIds: classData._id },
+      { $set: { classIds: null } }
     );
 
     // Update all professors to remove class from their classes array
@@ -324,7 +324,7 @@ const assignStudentsToClass = async (req, res) => {
     // Set student.classId to the Class _id (ObjectId)
     await Student.updateMany(
       { _id: { $in: studentObjectIds } },
-      { $set: { classId: classData._id } }
+      { $addToSet: { classIds: classData._id } }
     );
 
     return successResponse(res, { message: `${studentIds.length} students assigned to class successfully` });
@@ -364,8 +364,8 @@ const removeStudentsFromClass = async (req, res) => {
 
     // 1) Update students collection → set classId = null
     await Student.updateMany(
-      { _id: { $in: studentObjectIds }, classId: classData._id },
-      { $set: { classId: null } }
+      { _id: { $in: studentObjectIds } },
+      { $pull: { classIds: classData._id } }
     );
 
     // 2) Remove ObjectIds from "students" array in Class
@@ -513,8 +513,8 @@ const bulkDeleteClasses = async (req, res) => {
       await session.withTransaction(async () => {
         // 1) Detach students from these classes
         await Student.updateMany(
-          { classId: { $in: classObjectIds } },
-          { $set: { classId: null } },
+          { classIds: { $in: classObjectIds } },
+          { $pull: { classIds: { $in: classObjectIds } } },
           { session }
         );
 
@@ -563,5 +563,5 @@ module.exports = {
   assignProfessorsToClass,
   removeProfessorsFromClass,
   bulkUploadClasses,
-  bulkDeleteClasses 
+  bulkDeleteClasses
 };

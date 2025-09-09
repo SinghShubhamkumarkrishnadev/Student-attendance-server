@@ -4,6 +4,54 @@ const Student = require('../models/student.model');
 const Class = require('../models/class.model');
 const { parseExcel } = require('../utils/excel.utils');
 const { successResponse, errorResponse } = require('../utils/response.utils');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const { generateToken } = require('../config/jwt.config');
+
+/**
+ * @desc    Student login
+ * @route   POST /api/students/login
+ * @access  Private (HOD only)
+ */
+const loginStudent = async (req, res) => {
+  try {
+    const hodId = req.user.id;
+    const { enrollmentNumber } = req.body;
+
+    if (!enrollmentNumber) {
+      return errorResponse(res, 'Enrollment number is required', 400);
+    }
+
+    const student = await Student.findOne({
+      enrollmentNumber,
+      createdBy: hodId
+    });
+
+    if (!student) {
+      return errorResponse(res, 'Invalid enrollment number or access denied', 401);
+    }
+
+    // ✅ Generate token specific to student (with reference to HOD)
+    const token = generateToken(student, 'student', hodId);
+
+    return successResponse(res, {
+      message: 'Student logged in successfully',
+      token,
+      student: {
+        id: student._id,
+        name: student.name,
+        enrollmentNumber: student.enrollmentNumber,
+        semester: student.semester,
+        division: student.division,
+        classIds: student.classIds
+      }
+    });
+
+  } catch (error) {
+    console.error('[loginStudent]', error);
+    return errorResponse(res, 'Server error during student login', 500);
+  }
+};
 
 /**
  * @desc    Bulk upload students from Excel
@@ -92,16 +140,13 @@ const getStudents = async (req, res) => {
     }
 
     if (classId) {
-      // If client passed a Class _id (ObjectId), filter by student.classId
       if (mongoose.Types.ObjectId.isValid(classId)) {
-        query.classId = classId;
+        query.classIds = classId;
       } else {
-        // otherwise treat classId as human class code (e.g., "CS101") and attempt to resolve to _id
         const cls = await Class.findOne({ classId: classId, createdBy: hodId }).select('_id');
         if (cls) {
-          query.classId = cls._id;
+          query.classIds = cls._id;
         } else {
-          // no class found for this human code — return empty result set quickly
           return successResponse(res, { students: [] });
         }
       }
@@ -176,25 +221,40 @@ const updateStudent = async (req, res) => {
 
     // Handle class change logic
     if (classId) {
-      let newClassId = null;
-      if (mongoose.Types.ObjectId.isValid(classId)) {
-        const cls = await Class.findOne({ _id: classId, createdBy: hodId }).select('_id');
-        if (!cls) return errorResponse(res, 'Class not found', 404);
-        newClassId = cls._id;
-      } else {
-        const cls = await Class.findOne({ classId, createdBy: hodId }).select('_id');
-        if (!cls) return errorResponse(res, 'Class not found', 404);
-        newClassId = cls._id;
+      let newClassIds = [];
+
+      // If classId is a single value, wrap into an array
+      const ids = Array.isArray(classId) ? classId : [classId];
+
+      for (const id of ids) {
+        let cls = null;
+        if (mongoose.Types.ObjectId.isValid(id)) {
+          cls = await Class.findOne({ _id: id, createdBy: hodId }).select('_id');
+        } else {
+          cls = await Class.findOne({ classId: id, createdBy: hodId }).select('_id');
+        }
+        if (!cls) return errorResponse(res, `Class not found: ${id}`, 404);
+        newClassIds.push(cls._id);
       }
 
-      if (!student.classId || String(newClassId) !== String(student.classId)) {
-        if (student.classId) {
-          await Class.updateOne({ _id: student.classId }, { $pull: { students: studentId } });
-        }
-        await Class.updateOne({ _id: newClassId }, { $addToSet: { students: studentId } });
-        student.classId = newClassId;
-      }
+      // Remove student from old classes not in new list
+      const classesToRemove = student.classIds.filter(cid => !newClassIds.includes(cid));
+      await Class.updateMany(
+        { _id: { $in: classesToRemove } },
+        { $pull: { students: student._id } }
+      );
+
+      // Add student to new classes not already present
+      const classesToAdd = newClassIds.filter(cid => !student.classIds.includes(cid));
+      await Class.updateMany(
+        { _id: { $in: classesToAdd } },
+        { $addToSet: { students: student._id } }
+      );
+
+      // Finally, update student's classIds
+      student.classIds = newClassIds;
     }
+
 
     // Update other fields
     if (name) student.name = name;
@@ -236,13 +296,13 @@ const deleteStudent = async (req, res) => {
       return errorResponse(res, 'Student not found', 404);
     }
 
-    // If student is assigned to a class (student.classId is an ObjectId), remove from that Class.students
-    if (student.classId) {
-      await Class.updateOne(
-        { _id: student.classId },
-        { $pull: { students: studentId } }
+    if (student.classIds && student.classIds.length > 0) {
+      await Class.updateMany(
+        { _id: { $in: student.classIds } },
+        { $pull: { students: student._id } }
       );
     }
+
 
     // Delete student
     await student.deleteOne();
@@ -282,11 +342,16 @@ const deleteStudentsBulk = async (req, res) => {
     }
 
     // Remove student refs from their classes
-    const classUpdates = students
-      .filter(s => s.classId)
-      .map(s =>
-        Class.updateOne({ _id: s.classId }, { $pull: { students: s._id } })
-      );
+    const classUpdates = [];
+
+    students.forEach(s => {
+      if (s.classIds && s.classIds.length > 0) {
+        classUpdates.push(
+          Class.updateMany({ _id: { $in: s.classIds } }, { $pull: { students: s._id } })
+        );
+      }
+    });
+
 
     await Promise.all(classUpdates);
 
@@ -348,7 +413,7 @@ const addStudent = async (req, res) => {
       name,
       semester,
       division: division || null,
-      classId: resolvedClassId,
+      classIds: resolvedClassId ? [resolvedClassId] : [],
       createdBy: hodId
     });
 
@@ -380,5 +445,6 @@ module.exports = {
   updateStudent,
   deleteStudent,
   deleteStudentsBulk,
-  addStudent   
+  addStudent,
+  loginStudent
 };

@@ -7,11 +7,12 @@ const { authenticate, authorizeProfessor, authorizeProfessorOrHod, authorizeStud
 // Write attendance → professors only
 router.post('/bulk', authenticate, authorizeProfessor, attendanceController.markBulkAttendance);
 
+router.get('/me', authenticate, authorizeStudent, attendanceController.getStudentAttendanceForSelf);
+
 // Read attendance → professors or hods
+router.get('/student/:studentId', authenticate, authorizeProfessorOrHod, attendanceController.getStudentAttendance);
+router.get('/class/:classId', authenticate, authorizeProfessorOrHod, attendanceController.getClassAttendance);
 router.get('/:classId', authenticate, authorizeProfessorOrHod, attendanceController.getAttendanceByDate);
 router.get('/summary/:classId', authenticate, authorizeProfessorOrHod, attendanceController.getMonthlySummary);
-router.get('/class/:classId', authenticate, authorizeProfessorOrHod, attendanceController.getClassAttendance);
-router.get('/student/:studentId', authenticate, authorizeProfessorOrHod, attendanceController.getStudentAttendance);
-router.get('/me', authenticate, authorizeStudent, attendanceController.getStudentAttendanceForSelf);
 
 module.exports = router;

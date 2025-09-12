@@ -104,32 +104,22 @@ exports.markBulkAttendance = async (req, res, next) => {
 
     // =============== 🔔 Notification Part ===============
     try {
-      console.log('[attendance] notification step start - classId:', classId, 'slotNumber:', slotNumber, 'professorId:', professorId);
-
       // 1. Get class info
       const cls = await Class.findById(classId).lean();
       const className = cls?.className || "Class";
       const division = cls?.division ? ` (${cls.division})` : "";
-      console.log('[attendance] class info:', { className, division });
 
       // 2. Get affected students
       const studentIds = dedupedRecords.map(r => r.studentId);
-      console.log('[attendance] affected studentIds count:', studentIds.length);
-
       const students = await Student.find(
         { _id: { $in: studentIds } },
-        { fcmTokens: 1, name: 1 }
+        { fcmTokens: 1 }
       ).lean();
 
-      console.log('[attendance] found students count:', students.length);
-
       // 3. Collect all tokens
-      const tokens = students.flatMap(s => (Array.isArray(s.fcmTokens) ? s.fcmTokens : [])).filter(Boolean);
-      console.log(`[attendance] collected tokens total: ${tokens.length}`);
-
-      if (!messaging) {
-        console.error('[attendance] messaging instance is null/undefined. Skipping notifications.');
-      }
+      const tokens = students.flatMap(s =>
+        Array.isArray(s.fcmTokens) ? s.fcmTokens : []
+      ).filter(Boolean);
 
       if (tokens.length > 0 && messaging) {
         const notification = {
@@ -142,26 +132,19 @@ exports.markBulkAttendance = async (req, res, next) => {
           arr.reduce((acc, _, i) => (i % size ? acc : [...acc, arr.slice(i, i + size)]), []);
 
         const batches = chunkArray(tokens, 500);
-        console.log('[attendance] sending in batches:', batches.length);
 
         for (const [batchIndex, batch] of batches.entries()) {
           try {
-            console.log(`[attendance] sending batch ${batchIndex + 1}/${batches.length} (size: ${batch.length})`);
-
-            // Use sendEachForMulticast if available, else fallback
             let response;
             if (typeof messaging.sendEachForMulticast === 'function') {
               response = await messaging.sendEachForMulticast({ tokens: batch, notification });
             } else if (typeof messaging.sendMulticast === 'function') {
               response = await messaging.sendMulticast({ tokens: batch, notification });
-            } else if (typeof messaging.sendEach === 'function') {
-              // edge-case: method might be sendEach requiring array of messages — we use sendEachForMulticast first
-              response = await messaging.sendEachForMulticast({ tokens: batch, notification });
             } else {
               throw new Error('No supported multicast method available on messaging instance');
             }
 
-            console.log(`[attendance] FCM batch ${batchIndex + 1} response: successCount=${response.successCount}, failureCount=${response.failureCount}`);
+            console.log(`[attendance] Batch ${batchIndex + 1}/${batches.length}: success=${response.successCount}, failure=${response.failureCount}`);
 
             // Handle failures (clean invalid tokens)
             const invalidTokens = [];
@@ -169,8 +152,6 @@ exports.markBulkAttendance = async (req, res, next) => {
               response.responses.forEach((resp, idx) => {
                 if (!resp.success) {
                   const err = resp.error;
-                  // log the error type and message
-                  console.warn(`[attendance] token failed idx=${idx} token=${batch[idx]} errorCode=${err?.code} message=${err?.message}`);
                   if (
                     err?.code === "messaging/invalid-argument" ||
                     err?.code === "messaging/invalid-registration-token" ||
@@ -180,29 +161,26 @@ exports.markBulkAttendance = async (req, res, next) => {
                   }
                 }
               });
-            } else {
-              console.warn('[attendance] unexpected response shape from FCM:', response);
             }
 
             if (invalidTokens.length > 0) {
-              const updateRes = await Student.updateMany(
+              await Student.updateMany(
                 { fcmTokens: { $in: invalidTokens } },
                 { $pull: { fcmTokens: { $in: invalidTokens } } }
               );
-              console.log(`[attendance] removed ${invalidTokens.length} invalid tokens from DB`);
+              console.warn(`[attendance] Removed ${invalidTokens.length} invalid tokens from DB`);
             }
           } catch (batchErr) {
-            console.error(`[attendance] error sending batch ${batchIndex + 1}:`, batchErr);
-            // do not throw — continue with next batch
+            console.error(`[attendance] Error sending batch ${batchIndex + 1}:`, batchErr);
+            // continue with next batch
           }
         }
-      } else {
-        console.log('[attendance] no tokens to send or messaging not ready - skipping notification sending.');
       }
     } catch (notifyErr) {
       console.error("FCM Notification error (outer):", notifyErr);
       // ⚠️ Do not block attendance saving
     }
+
 
     // ✅ Final response
     return successResponse(

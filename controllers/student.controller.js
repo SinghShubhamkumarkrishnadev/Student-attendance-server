@@ -7,6 +7,64 @@ const { successResponse, errorResponse } = require('../utils/response.utils');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { generateToken } = require('../config/jwt.config');
+const { admin } = require('../config/firebase');
+
+/**
+ * @desc    Register FCM token for student
+ * @route   POST /api/students/fcm-token
+ * @access  Private (Student only)
+ */
+const registerFcmToken = async (req, res) => {
+  try {
+    const studentId = req.student._id;
+    const { fcmToken } = req.body;
+
+    if (!fcmToken) {
+      return errorResponse(res, 'fcmToken is required', 400);
+    }
+
+    // Save the FCM token to the student document
+    await Student.findByIdAndUpdate(
+      studentId,
+      { $addToSet: { fcmTokens: fcmToken } },  // ensures uniqueness
+      { new: true }
+    );
+
+    return successResponse(res, {
+      message: 'FCM token registered successfully'
+    });
+
+  } catch (error) {
+    console.error('[registerFcmToken]', error);
+    return errorResponse(res, 'Server error while registering FCM token', 500);
+  }
+};
+
+/**
+ * @desc    Remove FCM token for student (optional)
+ * @route   DELETE /api/students/fcm-token
+ * @access  Private (Student only)
+ */
+const removeFcmToken = async (req, res) => {
+  try {
+    const studentId = req.student._id;
+
+    // Remove the FCM token from the student document
+    await Student.findByIdAndUpdate(
+      studentId,
+      { $pull: { fcmTokens: req.body.fcmToken } },
+      { new: true }
+    );
+
+    return successResponse(res, {
+      message: 'FCM token removed successfully'
+    });
+
+  } catch (error) {
+    console.error('[removeFcmToken]', error);
+    return errorResponse(res, 'Server error while removing FCM token', 500);
+  }
+};
 
 /**
  * @desc    Student login
@@ -446,5 +504,7 @@ module.exports = {
   deleteStudent,
   deleteStudentsBulk,
   addStudent,
-  loginStudent
+  loginStudent,
+  registerFcmToken,
+  removeFcmToken
 };

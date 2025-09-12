@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const Attendance = require('../models/attendance.model');
 const Class = require('../models/class.model');
 const { successResponse, errorResponse } = require('../utils/response.utils');
+const messaging = require('../config/firebase');
 
 /**
  * Verify professor access to a class.
@@ -74,6 +75,7 @@ exports.markBulkAttendance = async (req, res, next) => {
 
     const dedupedRecords = Array.from(dedupedMap.values());
 
+    // ✅ Bulk save attendance
     const ops = dedupedRecords.map((rec) => ({
       updateOne: {
         filter: {
@@ -99,10 +101,66 @@ exports.markBulkAttendance = async (req, res, next) => {
       await Attendance.bulkWrite(ops);
     }
 
+    // =============== 🔔 Notification Part ===============
+    try {
+      // 1. Get class info
+      const cls = await Class.findById(classId).lean();
+      const className = cls?.className || "Class";
+      const division = cls?.division ? ` (${cls.division})` : "";
+
+      // 2. Get affected students
+      const studentIds = dedupedRecords.map(r => r.studentId);
+      const students = await Student.find(
+        { _id: { $in: studentIds } },
+        { fcmTokens: 1, name: 1 }
+      ).lean();
+
+      // 3. Collect all tokens
+      const tokens = students.flatMap(s => s.fcmTokens).filter(Boolean);
+
+      if (tokens.length > 0) {
+        const notification = {
+          title: "Attendance Updated",
+          body: `Your attendance for ${className}${division}, Slot ${slotNumber} on ${new Date(normalizedDateMs).toISOString().split('T')[0]} has been marked.`,
+        };
+
+        // ✅ Utility: chunk tokens into groups of 500
+        const chunkArray = (arr, size) =>
+          arr.reduce((acc, _, i) => (i % size ? acc : [...acc, arr.slice(i, i + size)]), []);
+
+        const batches = chunkArray(tokens, 500);
+
+        for (const batch of batches) {
+          const message = { notification, tokens: batch };
+          const response = await messaging.sendMulticast(message);
+
+          // Handle failures (clean invalid tokens)
+          if (response.failureCount > 0) {
+            const invalidTokens = [];
+            response.responses.forEach((resp, idx) => {
+              if (!resp.success) invalidTokens.push(batch[idx]);
+            });
+
+            if (invalidTokens.length > 0) {
+              await Student.updateMany(
+                { fcmTokens: { $in: invalidTokens } },
+                { $pull: { fcmTokens: { $in: invalidTokens } } }
+              );
+              console.log("Removed invalid FCM tokens:", invalidTokens);
+            }
+          }
+        }
+      }
+    } catch (notifyErr) {
+      console.error("FCM Notification error:", notifyErr);
+      // ⚠️ Do not block attendance saving
+    }
+
+    // ✅ Final response
     return successResponse(
       res,
       {
-        message: 'Attendance processed',
+        message: 'Attendance processed & notifications triggered',
         savedCount: dedupedRecords.length,
         skippedCount: skippedStudentIds.length,
         skippedStudentIds,

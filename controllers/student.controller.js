@@ -90,7 +90,7 @@ const loginStudent = async (req, res) => {
     }
 
     // ✅ Generate token specific to student (with reference to HOD)
-    const token = generateToken(student, 'student', hodId);
+    const token = generateToken(student, 'student', student.createdBy);
 
     return successResponse(res, {
       message: 'Student logged in successfully',

@@ -18,6 +18,12 @@ const allowHODorProfessor = (req, res, next) => {
 // Student login with HOD authorization
 router.post('/login', authenticate, authorizeHOD, validateStudentLogin, studentController.loginStudent);
 
+// ✅ Register FCM token → students only
+router.post('/fcm-token', authenticate, authorizeStudent, studentController.registerFcmToken);
+
+// ✅ (Optional later) Remove FCM token → students only
+// router.delete('/fcm-token', authenticate, authorizeStudent, studentController.removeFcmToken);
+
 // ✅ Shared access: HOD + Professor can fetch students
 router.get('/', authenticate, allowHODorProfessor, studentController.getStudents);
 
@@ -30,9 +36,6 @@ router.post('/bulk-upload', handleExcelUpload, studentController.bulkUploadStude
 // Bulk delete students
 router.delete('/', studentController.deleteStudentsBulk);
 
-// ✅ Register FCM token → students only
-router.post('/fcm-token', authenticate, authorizeStudent, studentController.registerFcmToken);
-
 // Add single student
 router.post('/', studentController.addStudent);
 
@@ -44,8 +47,5 @@ router.put('/:id', studentController.updateStudent);
 
 // Delete student
 router.delete('/:id', studentController.deleteStudent);
-
-// ✅ (Optional later) Remove FCM token → students only
-// router.delete('/fcm-token', authenticate, authorizeStudent, studentController.removeFcmToken);
 
 module.exports = router;

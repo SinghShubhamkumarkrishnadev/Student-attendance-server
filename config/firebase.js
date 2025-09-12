@@ -2,18 +2,26 @@
 const admin = require('firebase-admin');
 const { getMessaging } = require('firebase-admin/messaging');
 
-
 console.log('FIREBASE_PROJECT_ID', !!process.env.FIREBASE_PROJECT_ID);
 console.log('FIREBASE_CLIENT_EMAIL', !!process.env.FIREBASE_CLIENT_EMAIL);
 console.log('FIREBASE_PRIVATE_KEY present?', !!process.env.FIREBASE_PRIVATE_KEY);
 
 try {
-  // Defensive: ensure env values exist before using replace
+  // Defensive: handle both escaped "\n" and real multiline keys
   const privateKeyRaw = process.env.FIREBASE_PRIVATE_KEY || '';
-  const privateKey = privateKeyRaw ? privateKeyRaw.replace(/\\n/g, '\n') : undefined;
+  let privateKey = privateKeyRaw;
+
+  if (privateKeyRaw.includes('\\n')) {
+    // case: one-line string with \n escapes
+    privateKey = privateKeyRaw.replace(/\\n/g, '\n');
+  }
+
+  // 🔍 Debugging checks
+  console.log('[firebase] privateKey first 50 chars:', privateKey.slice(0, 50));
+  console.log('[firebase] privateKey contains literal "\\n"?', privateKey.includes('\\n'));
+  console.log('[firebase] privateKey contains actual newline?', privateKey.includes('\n'));
 
   if (!admin.apps.length) {
-    // log what we have (mask private key)
     console.log('[firebase] initializing firebase admin with projectId=', process.env.FIREBASE_PROJECT_ID);
 
     admin.initializeApp({
@@ -31,13 +39,12 @@ try {
   console.error('[firebase] initialization error:', initErr);
 }
 
-// Export both admin and messaging instance (use getMessaging() which is equivalent)
+// Export both admin and messaging instance
 let messaging;
 try {
-  messaging = getMessaging(); // preferred import in recent SDKs
+  messaging = getMessaging();
   console.log('[firebase] messaging instance obtained');
 } catch (err) {
-  // fallback to admin.messaging() for compatibility
   try {
     messaging = admin.messaging();
     console.log('[firebase] messaging fallback to admin.messaging() successful');

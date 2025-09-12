@@ -4,6 +4,7 @@ const Attendance = require('../models/attendance.model');
 const Class = require('../models/class.model');
 const { successResponse, errorResponse } = require('../utils/response.utils');
 const messaging = require('../config/firebase');
+const Student = require('../models/student.model');
 
 /**
  * Verify professor access to a class.

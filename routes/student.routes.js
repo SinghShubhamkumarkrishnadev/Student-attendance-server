@@ -30,6 +30,9 @@ router.post('/bulk-upload', handleExcelUpload, studentController.bulkUploadStude
 // Bulk delete students
 router.delete('/', studentController.deleteStudentsBulk);
 
+// ✅ Register FCM token → students only
+router.post('/fcm-token', authenticate, authorizeStudent, studentController.registerFcmToken);
+
 // Add single student
 router.post('/', studentController.addStudent);
 
@@ -41,9 +44,6 @@ router.put('/:id', studentController.updateStudent);
 
 // Delete student
 router.delete('/:id', studentController.deleteStudent);
-
-// ✅ Register FCM token → students only
-router.post('/fcm-token', authenticate, authorizeStudent, studentController.registerFcmToken);
 
 // ✅ (Optional later) Remove FCM token → students only
 // router.delete('/fcm-token', authenticate, authorizeStudent, studentController.removeFcmToken);

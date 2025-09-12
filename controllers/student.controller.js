@@ -17,16 +17,19 @@ const { admin } = require('../config/firebase');
 const registerFcmToken = async (req, res) => {
   try {
     const studentId = req.student._id;
-    const { fcmToken } = req.body;
+    let { fcmToken } = req.body;
 
     if (!fcmToken) {
       return errorResponse(res, 'fcmToken is required', 400);
     }
 
+    // 🔑 Decode URL-encoded token (fixes %3A issue)
+    fcmToken = decodeURIComponent(fcmToken);
+
     // Save the FCM token to the student document
     await Student.findByIdAndUpdate(
       studentId,
-      { $addToSet: { fcmTokens: fcmToken } },  // ensures uniqueness
+      { $addToSet: { fcmTokens: fcmToken } }, // ensures uniqueness
       { new: true }
     );
 

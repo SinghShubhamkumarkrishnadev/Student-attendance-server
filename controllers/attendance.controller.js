@@ -132,18 +132,27 @@ exports.markBulkAttendance = async (req, res, next) => {
         const batches = chunkArray(tokens, 500);
 
         for (const batch of batches) {
-          // ✅ New way: sendEach()
-          const messages = batch.map(token => ({
-            token,
+          // ✅ New way: sendEachForMulticast()
+          const multicastMessage = {
+            tokens: batch,
             notification,
-          }));
+          };
 
-          const response = await messaging.sendEach(messages);
+          const response = await messaging.sendEachForMulticast(multicastMessage);
 
           // Handle failures (clean invalid tokens)
           const invalidTokens = [];
           response.responses.forEach((resp, idx) => {
-            if (!resp.success) invalidTokens.push(batch[idx]);
+            if (!resp.success) {
+              const err = resp.error;
+              if (
+                err.code === "messaging/invalid-argument" ||
+                err.code === "messaging/invalid-registration-token" ||
+                err.code === "messaging/registration-token-not-registered"
+              ) {
+                invalidTokens.push(batch[idx]);
+              }
+            }
           });
 
           if (invalidTokens.length > 0) {
@@ -160,7 +169,6 @@ exports.markBulkAttendance = async (req, res, next) => {
       // ⚠️ Do not block attendance saving
     }
 
-
     // ✅ Final response
     return successResponse(
       res,
@@ -176,6 +184,7 @@ exports.markBulkAttendance = async (req, res, next) => {
     next(err);
   }
 };
+
 
 
 // ========== CLASS ATTENDANCE BY DATE ==========

@@ -132,23 +132,26 @@ exports.markBulkAttendance = async (req, res, next) => {
         const batches = chunkArray(tokens, 500);
 
         for (const batch of batches) {
-          const message = { notification, tokens: batch };
-          const response = await messaging.sendMulticast(message);
+          // ✅ New way: sendEach()
+          const messages = batch.map(token => ({
+            token,
+            notification,
+          }));
+
+          const response = await messaging.sendEach(messages);
 
           // Handle failures (clean invalid tokens)
-          if (response.failureCount > 0) {
-            const invalidTokens = [];
-            response.responses.forEach((resp, idx) => {
-              if (!resp.success) invalidTokens.push(batch[idx]);
-            });
+          const invalidTokens = [];
+          response.responses.forEach((resp, idx) => {
+            if (!resp.success) invalidTokens.push(batch[idx]);
+          });
 
-            if (invalidTokens.length > 0) {
-              await Student.updateMany(
-                { fcmTokens: { $in: invalidTokens } },
-                { $pull: { fcmTokens: { $in: invalidTokens } } }
-              );
-              console.log("Removed invalid FCM tokens:", invalidTokens);
-            }
+          if (invalidTokens.length > 0) {
+            await Student.updateMany(
+              { fcmTokens: { $in: invalidTokens } },
+              { $pull: { fcmTokens: { $in: invalidTokens } } }
+            );
+            console.log("Removed invalid FCM tokens:", invalidTokens);
           }
         }
       }
@@ -156,6 +159,7 @@ exports.markBulkAttendance = async (req, res, next) => {
       console.error("FCM Notification error:", notifyErr);
       // ⚠️ Do not block attendance saving
     }
+
 
     // ✅ Final response
     return successResponse(

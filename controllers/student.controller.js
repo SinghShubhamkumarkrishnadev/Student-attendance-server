@@ -7,7 +7,7 @@ const { successResponse, errorResponse } = require('../utils/response.utils');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { generateToken } = require('../config/jwt.config');
-const { admin } = require('../config/firebase');
+const messaging = require('../config/firebase');
 
 /**
  * @desc    Register FCM token for student

@@ -11,7 +11,6 @@ const professorSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Username is required'],
     trim: true,
-    lowercase: true, // ✅ always store in lowercase
     minlength: [3, 'Username must be at least 3 characters'],
   },
   password: {

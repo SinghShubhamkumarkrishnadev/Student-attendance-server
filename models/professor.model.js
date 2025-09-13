@@ -22,6 +22,7 @@ const professorSchema = new mongoose.Schema({
   classes: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Class',
+    default: []
   }],
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,

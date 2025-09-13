@@ -23,7 +23,8 @@ const studentSchema = new mongoose.Schema({
   },
   classIds: [{
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Class'
+    ref: 'Class',
+    default: []
   }],
   fcmTokens: {
     type: [String],

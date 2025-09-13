@@ -17,11 +17,13 @@ const classSchema = new mongoose.Schema({
   },
   students: [{
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Student'
+    ref: 'Student',
+    default: []
   }],
   professors: [{
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Professor'
+    ref: 'Professor',
+    default: []
   }],
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,

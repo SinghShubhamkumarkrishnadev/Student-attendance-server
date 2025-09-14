@@ -108,7 +108,7 @@ const bulkUploadProfessors = async (req, res) => {
       seenInFile.add(unameLower);
 
       // generate a default password when none provided (random but deterministic enough)
-      const password = r.password || `Temp@${Math.floor(1000 + Math.random() * 9000)}`;
+      const password = r.password || 'Temp@1234';
 
       toInsert.push({
         name: r.name,
